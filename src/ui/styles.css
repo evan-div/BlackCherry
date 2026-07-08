@@ -1,0 +1,477 @@
+/*
+ * All styles for the embeddable explorer live here, namespaced under .tse-root so
+ * they can never leak into (or be leaked into by) an arbitrary host page. Every
+ * color/spacing token that a host might reasonably want to theme is a --tse-*
+ * custom property (set via config/theme.ts); everything else is a fixed internal
+ * detail of the component.
+ */
+
+.tse-root {
+  --tse-marker-size: 26px;
+  --tse-z-canvas: 0;
+  --tse-z-overlay: 10;
+  --tse-z-shield: 20;
+  --tse-z-card: 30;
+
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border-radius: var(--tse-radius, 10px);
+  background: var(--tse-surface, #12141a);
+  font-family: var(--tse-font-family, sans-serif);
+  color: var(--tse-surface-text, #f4f4f6);
+  line-height: 1.4;
+  box-sizing: border-box;
+  isolation: isolate;
+}
+.tse-root, .tse-root * , .tse-root *::before, .tse-root *::after {
+  box-sizing: border-box;
+}
+.tse-root:focus {
+  /* Focused programmatically to receive WASD keydown in walk mode, not via Tab —
+   * a visible focus ring here would be a UI glitch, not an accessibility aid. */
+  outline: none;
+}
+
+.tse-canvas-wrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+.tse-canvas-wrap canvas {
+  display: block;
+  outline: none;
+}
+
+/* ---------- Overlay shell ---------- */
+
+.tse-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: var(--tse-z-overlay);
+  pointer-events: none;
+}
+.tse-overlay > * {
+  pointer-events: auto;
+}
+
+.tse-top-bar {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.tse-bottom-bar {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  right: 12px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.tse-btn-group {
+  display: flex;
+  gap: 8px;
+}
+
+/* ---------- Buttons ---------- */
+
+.tse-btn {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(18, 20, 26, 0.72);
+  backdrop-filter: blur(8px);
+  color: var(--tse-surface-text, #f4f4f6);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: calc(var(--tse-radius, 10px) * 0.7);
+  padding: 8px 14px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background-color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+.tse-btn:hover:not(:disabled) {
+  background: rgba(34, 37, 46, 0.85);
+  border-color: rgba(255, 255, 255, 0.28);
+}
+.tse-btn:focus-visible {
+  outline: 2px solid var(--tse-accent, #c8102e);
+  outline-offset: 2px;
+}
+.tse-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.tse-btn--icon {
+  padding: 8px;
+  width: 34px;
+  height: 34px;
+  justify-content: center;
+}
+.tse-btn--accent {
+  background: var(--tse-accent, #c8102e);
+  border-color: transparent;
+  color: var(--tse-accent-text, #fff);
+}
+.tse-btn--accent:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+/* ---------- Mode toggle ---------- */
+
+.tse-mode-toggle {
+  display: inline-flex;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(18, 20, 26, 0.72);
+  backdrop-filter: blur(8px);
+  border-radius: calc(var(--tse-radius, 10px) * 0.7);
+  padding: 3px;
+  gap: 2px;
+}
+.tse-mode-toggle button {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--tse-surface-text, #f4f4f6);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: calc(var(--tse-radius, 10px) * 0.5);
+  cursor: pointer;
+}
+.tse-mode-toggle button[aria-pressed='true'] {
+  background: var(--tse-accent, #c8102e);
+  color: var(--tse-accent-text, #fff);
+}
+.tse-mode-toggle button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* ---------- Activation shield ---------- */
+
+.tse-activation-shield {
+  position: absolute;
+  inset: 0;
+  z-index: var(--tse-z-shield);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  touch-action: pan-y;
+  border: none;
+  padding: 0;
+  width: 100%;
+}
+
+.tse-activation-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: rgba(12, 13, 17, 0.78);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  backdrop-filter: blur(6px);
+  transition: transform 0.15s ease, background-color 0.15s ease;
+}
+.tse-activation-shield:hover .tse-activation-badge {
+  background: rgba(12, 13, 17, 0.92);
+  transform: scale(1.03);
+}
+
+/* ---------- Controls legend ---------- */
+
+.tse-legend {
+  font-size: 11px;
+  color: rgba(244, 244, 246, 0.75);
+  background: rgba(18, 20, 26, 0.6);
+  border-radius: calc(var(--tse-radius, 10px) * 0.6);
+  padding: 6px 10px;
+  max-width: 260px;
+}
+
+/* ---------- Scene poster (pre-mount placeholder) ---------- */
+
+.tse-poster {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.tse-poster--blank {
+  background: linear-gradient(135deg, #dde1e8, #cfd3db);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tse-poster__pulse {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+  animation: tse-pulse 1.6s ease-in-out infinite;
+}
+@keyframes tse-pulse {
+  0%, 100% { transform: scale(0.85); opacity: 0.5; }
+  50% { transform: scale(1.1); opacity: 0.9; }
+}
+
+/* ---------- Loading / error ---------- */
+
+.tse-loading,
+.tse-error {
+  position: absolute;
+  inset: 0;
+  z-index: var(--tse-z-card);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: var(--tse-overlay-scrim, rgba(10, 10, 14, 0.82));
+  color: #fff;
+  text-align: center;
+  padding: 24px;
+  transition: opacity 0.3s ease;
+}
+
+.tse-loading__label {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+.tse-progress-track {
+  width: 200px;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.18);
+  overflow: hidden;
+}
+.tse-progress-fill {
+  height: 100%;
+  background: var(--tse-accent, #c8102e);
+  border-radius: 2px;
+  transition: width 0.2s ease;
+}
+.tse-progress-fill--indeterminate {
+  width: 40% !important;
+  animation: tse-indeterminate 1.1s ease-in-out infinite;
+}
+@keyframes tse-indeterminate {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(250%); }
+}
+
+.tse-error__title {
+  font-size: 15px;
+  font-weight: 600;
+}
+.tse-error__body {
+  font-size: 13px;
+  opacity: 0.8;
+  max-width: 320px;
+}
+
+/* ---------- Hotspots ---------- */
+
+.tse-hotspot-marker {
+  position: relative;
+  width: var(--tse-marker-size);
+  height: var(--tse-marker-size);
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: var(--tse-accent, #c8102e);
+  box-shadow: 0 0 0 4px rgba(200, 16, 46, 0.25);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 0;
+  transition: transform 0.15s ease, opacity 0.2s ease;
+  transform: translate(-50%, -50%);
+}
+.tse-hotspot-marker:hover,
+.tse-hotspot-marker:focus-visible {
+  transform: translate(-50%, -50%) scale(1.18);
+}
+/* Expand the tappable area to the 44px minimum touch target on coarse pointers
+ * without growing the visual dot — an invisible hit-area overlay. */
+@media (pointer: coarse) {
+  .tse-hotspot-marker::after {
+    content: '';
+    position: absolute;
+    inset: 50% auto auto 50%;
+    width: 44px;
+    height: 44px;
+    transform: translate(-50%, -50%);
+  }
+}
+.tse-hotspot-marker--active {
+  background: #fff;
+  color: var(--tse-accent, #c8102e);
+}
+.tse-hotspot-marker--occluded {
+  opacity: 0.32;
+}
+
+.tse-hotspot-tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  background: rgba(12, 13, 17, 0.9);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+.tse-hotspot-card {
+  position: absolute;
+  z-index: var(--tse-z-card);
+  width: 260px;
+  background: rgba(18, 20, 26, 0.96);
+  color: #fff;
+  border-radius: var(--tse-radius, 10px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+  padding: 14px;
+  pointer-events: auto;
+}
+.tse-hotspot-card img {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  border-radius: calc(var(--tse-radius, 10px) * 0.6);
+  margin-bottom: 10px;
+}
+.tse-hotspot-card__category {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.6;
+  margin-bottom: 4px;
+}
+.tse-hotspot-card__title {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0 0 6px;
+}
+.tse-hotspot-card__desc {
+  font-size: 13px;
+  opacity: 0.85;
+  margin: 0 0 10px;
+}
+.tse-hotspot-card__close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tse-bottom-sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: var(--tse-z-card);
+  width: 100%;
+  border-radius: 16px 16px 0 0;
+}
+
+/* ---------- Hotspot list ---------- */
+
+.tse-hotspot-list {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  max-width: 60vw;
+  scrollbar-width: none;
+}
+.tse-hotspot-list::-webkit-scrollbar {
+  display: none;
+}
+.tse-hotspot-chip {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+/* ---------- Walk mode instructions ---------- */
+
+.tse-walk-instructions {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 12px;
+  background: rgba(18, 20, 26, 0.72);
+  padding: 8px 14px;
+  border-radius: 999px;
+  backdrop-filter: blur(6px);
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.tse-touch-disabled-note {
+  font-size: 11px;
+  opacity: 0.7;
+  max-width: 160px;
+  text-align: right;
+}
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 640px) {
+  .tse-legend { display: none; }
+  .tse-hotspot-card {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    border-radius: 16px 16px 0 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tse-root * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

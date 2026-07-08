@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Trade Show Explorer</title>
+    <style>
+      html, body, #embed-root { height: 100%; margin: 0; }
+      /* Iframe embed has no host page around it, so the explorer's own rounded
+       * corners would look odd flush against the iframe edge. */
+      #embed-root .tse-root { border-radius: 0; }
+    </style>
+  </head>
+  <body>
+    <div id="embed-root"></div>
+    <script type="module" src="/src/embed-entry.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,53 @@
+/* Styles for the dev/demo shell only — never shipped as part of the embeddable
+ * library build. Deliberately generic "marketing site" look. */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #f5f5f7;
+  color: #1a1a1f;
+}
+
+.demo-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.demo-hero {
+  padding: 96px 0 48px;
+  text-align: center;
+}
+.demo-hero h1 {
+  font-size: 40px;
+  margin: 0 0 12px;
+}
+.demo-hero p {
+  color: #55555c;
+  font-size: 16px;
+}
+
+.demo-filler {
+  /* Tall enough that the explorer starts well outside the lazy-mount rootMargin
+   * (400px) at scroll position 0 — this section exists specifically to prove the
+   * explorer doesn't eagerly load its three.js chunk on initial page load. */
+  min-height: 1400px;
+  padding: 120px 0;
+  color: #6b6b73;
+  font-size: 15px;
+  max-width: 620px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.demo-explorer-section {
+  padding: 24px 0 60px;
+}
+.demo-explorer-section h2 {
+  margin: 0 0 16px;
+  font-size: 22px;
+}
