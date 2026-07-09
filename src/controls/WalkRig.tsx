@@ -135,6 +135,11 @@ export function WalkRig({ keysRef }: WalkRigProps) {
       camera.position.set(resolvedX, groundY + walkDefaults.eyeHeight, resolvedZ);
     }
 
+    if (import.meta.env.DEV) {
+      // @ts-expect-error temp debug hook for manual QA
+      window.__tseCameraPos = camera.position.toArray();
+    }
+
     state.invalidate();
   });
 
