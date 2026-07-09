@@ -92,6 +92,10 @@ export function Hotspots({ hotspots, ready, cardAnchorRef, isTouchOnly }: Hotspo
     // handler selects it.
     if (mode === 'walk') {
       _forward.set(0, 0, -1).applyQuaternion(state.camera.quaternion);
+      if (import.meta.env.DEV) {
+        // @ts-expect-error temp debug hook for manual QA
+        window.__tseAnchorCount = anchorsRef.current.size;
+      }
       let bestId: string | null = null;
       let bestDot = LOOK_AT_MIN_DOT;
       anchorsRef.current.forEach((pos, id) => {
@@ -100,6 +104,12 @@ export function Hotspots({ hotspots, ready, cardAnchorRef, isTouchOnly }: Hotspo
         if (dist > LOOK_AT_MAX_DISTANCE || dist < 0.01) return;
         _toHotspot.divideScalar(dist);
         const dot = _toHotspot.dot(_forward);
+        if (import.meta.env.DEV) {
+          // @ts-expect-error temp debug hook for manual QA
+          window.__tseLookDebug = window.__tseLookDebug || {};
+          // @ts-expect-error temp debug hook for manual QA
+          window.__tseLookDebug[id] = { dist, dot, camPos: state.camera.position.toArray(), forward: _forward.toArray() };
+        }
         if (dot > bestDot) {
           bestDot = dot;
           bestId = id;
