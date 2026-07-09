@@ -45,6 +45,10 @@ export function CameraTransition() {
       // raycast onto the tabletop instead of the true floor, landing the player
       // at an inconsistent (and sometimes very low) height.
       const [spawnX, spawnZ, groundY] = collision.findSpawnPoint(camera.position.x, camera.position.z);
+      if (import.meta.env.DEV) {
+        console.log('[TSE debug] pre-transition camera pos:', camera.position.toArray());
+        console.log('[TSE debug] resolved spawn:', spawnX, spawnZ, groundY);
+      }
       goalPos.current.set(spawnX, groundY + walkDefaults.eyeHeight, spawnZ);
       // Keep current facing but level out pitch/roll for a natural walk start.
       _euler.setFromQuaternion(camera.quaternion, 'YXZ');

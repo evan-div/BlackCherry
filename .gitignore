@@ -13,6 +13,9 @@ dist-lib
 dist-ssr
 *.local
 
+# Ad hoc manual-QA scripts, never meant to be committed
+/scratch-*.mjs
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
