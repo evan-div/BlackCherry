@@ -40,12 +40,11 @@ export function CameraTransition() {
     elapsed.current = 0;
 
     if (mode === 'walk') {
-      // Push the spawn point out of any obstacle footprint first — entering walk
-      // mode while the orbit camera happened to be positioned above a table would
-      // otherwise raycast onto the tabletop instead of the true floor, landing the
-      // player at an inconsistent (and sometimes very low) height.
-      const [spawnX, spawnZ] = collision.resolveXZ(camera.position.x, camera.position.z, 0.4);
-      const groundY = collision.groundHeightAt(spawnX, spawnZ, 0);
+      // Find real floor near the spawn point first — entering walk mode while the
+      // orbit camera happened to be positioned above a table would otherwise
+      // raycast onto the tabletop instead of the true floor, landing the player
+      // at an inconsistent (and sometimes very low) height.
+      const [spawnX, spawnZ, groundY] = collision.findSpawnPoint(camera.position.x, camera.position.z);
       goalPos.current.set(spawnX, groundY + walkDefaults.eyeHeight, spawnZ);
       // Keep current facing but level out pitch/roll for a natural walk start.
       _euler.setFromQuaternion(camera.quaternion, 'YXZ');

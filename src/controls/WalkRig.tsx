@@ -123,9 +123,12 @@ export function WalkRig({ keysRef }: WalkRigProps) {
       const dx = (-sin * moveForward + cos * moveRight) * speed * dt;
       const dz = (-cos * moveForward - sin * moveRight) * speed * dt;
 
-      const [resolvedX, resolvedZ] = collision.resolveXZ(
+      const [resolvedX, resolvedZ] = collision.resolveMove(
+        camera.position.x,
+        camera.position.z,
         camera.position.x + dx,
         camera.position.z + dz,
+        camera.position.y,
         PLAYER_RADIUS,
       );
       const groundY = collision.groundHeightAt(resolvedX, resolvedZ, camera.position.y - walkDefaults.eyeHeight);
