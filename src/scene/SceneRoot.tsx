@@ -7,6 +7,7 @@ import type { Hotspot } from '../config/types';
 import { Hotspots } from '../hotspots/Hotspots';
 import { Lighting } from './Lighting';
 import { PlaceholderScene } from './PlaceholderScene';
+import { SceneConfigProvider } from './SceneConfig';
 import { TradeShowModel } from './TradeShowModel';
 
 interface SceneRootProps {
@@ -49,10 +50,15 @@ export function SceneRoot({
     [onModelLoaded],
   );
 
+  // Fog distance scales with the scene: the placeholder is a ~32m room, the real
+  // trade show floor is a ~120m hall — the placeholder's fog range would erase most
+  // of the real venue almost immediately.
+  const [fogNear, fogFar] = modelUrl ? [60, 150] : [22, 42];
+
   return (
-    <>
+    <SceneConfigProvider hasModel={!!modelUrl}>
       <color attach="background" args={['#dde1e8']} />
-      <fog attach="fog" args={['#dde1e8', 22, 42]} />
+      <fog attach="fog" args={['#dde1e8', fogNear, fogFar]} />
       <ControlsRig keysRef={keysRef} />
       <Lighting />
       <Suspense fallback={null}>
@@ -73,6 +79,6 @@ export function SceneRoot({
         cardAnchorRef={cardAnchorRef}
         isTouchOnly={isTouchOnly}
       />
-    </>
+    </SceneConfigProvider>
   );
 }

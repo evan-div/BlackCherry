@@ -1,11 +1,11 @@
 import { Raycaster, Vector3 } from 'three';
 import type { Object3D } from 'three';
-import { DEFAULT_WALK } from '../config/defaults';
+import type { WalkDefaults } from '../config/types';
 
 const _origin = new Vector3();
 const _down = new Vector3(0, -1, 0);
 const raycaster = new Raycaster();
-raycaster.far = 60;
+raycaster.far = 100;
 
 export interface CollisionWorld {
   groundHeightAt: (x: number, z: number, fallback: number) => number;
@@ -15,14 +15,14 @@ export interface CollisionWorld {
 /**
  * Lightweight collision for walk mode: a downward raycast against the scene for
  * ground height, plus a hard XZ bounding-box clamp standing in for walls. This is
- * deliberately not a full BVH/wall-slide system — the placeholder scene has no wall
- * geometry to collide with yet. Once the real GLB ships an authored `COLLISION_*`
- * proxy mesh, this is the place to raycast against it specifically (accelerated via
- * three-mesh-bvh, already a dependency) and add wall sliding — tracked in the
- * performance-pass task.
+ * deliberately not a full BVH/wall-slide system — neither the placeholder scene nor
+ * the current trade-show.glb export has an authored collision proxy to raycast
+ * against. Should a future export ship a `COLLISION_*` mesh, this is the place to
+ * raycast against it specifically (accelerated via three-mesh-bvh, already a
+ * dependency) and add wall sliding.
  */
-export function createCollisionWorld(root: Object3D): CollisionWorld {
-  const bounds = DEFAULT_WALK.bounds;
+export function createCollisionWorld(root: Object3D, walkDefaults: WalkDefaults): CollisionWorld {
+  const bounds = walkDefaults.bounds;
 
   return {
     groundHeightAt(x, z, fallback) {

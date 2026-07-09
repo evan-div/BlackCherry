@@ -11,4 +11,4 @@ export type {
   HotspotCameraView,
   HotspotCategory,
 } from './config/types';
-export { hotspots as defaultHotspots } from './config/hotspots';
+export { placeholderHotspots, tradeShowHotspots } from './config/hotspots';

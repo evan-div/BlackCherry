@@ -4,12 +4,12 @@ import type { Hotspot } from './types';
  * Structured hotspot config — the single place to add/edit/remove points of interest.
  * No rendering logic lives here; scene code only reads this array.
  *
- * `anchor.nodeName` must match an Empty authored in the Blender file (named `HS_<id>`
- * by convention). Until the real trade-show.glb is wired in, these match the named
- * anchors created by the procedural PlaceholderScene so the whole hotspot pipeline
- * (markers, cards, fly-to) is exercisable with zero rework once the real asset lands.
+ * Prefer `{ type: 'node', nodeName: '...' }` anchors matching an Empty authored in
+ * the Blender file (named `HS_<id>` by convention) — they survive re-exports.
+ * `placeholderHotspots` below matches the procedural PlaceholderScene's anchors,
+ * used automatically when no `modelUrl` is set.
  */
-export const hotspots: Hotspot[] = [
+export const placeholderHotspots: Hotspot[] = [
   {
     id: 'reception',
     anchor: { type: 'node', nodeName: 'HS_reception' },
@@ -58,3 +58,60 @@ export const hotspots: Hotspot[] = [
     category: 'signage',
   },
 ];
+
+/**
+ * Hotspots for the real trade-show.glb. That particular export has no authored
+ * `HS_*` anchor Empties (see README's Blender export checklist for the naming
+ * contract a future export should follow), so these use hand-picked
+ * `{ type: 'position', ... }` coordinates read from the model's actual geometry
+ * instead — workable, but brittler across re-exports than node anchors.
+ */
+export const tradeShowHotspots: Hotspot[] = [
+  {
+    id: 'main-stage',
+    anchor: { type: 'position', position: [0, 2, 3] },
+    title: 'Main Stage',
+    description:
+      'The keynote stage with podium, ready for keynote speakers, panels, and product announcements.',
+    category: 'stage',
+    cameraView: { position: [6, 2.2, 10], distance: 6 },
+  },
+  {
+    id: 'stage-backdrop',
+    anchor: { type: 'position', position: [0, 3.5, -3] },
+    title: 'Presentation Backdrop',
+    description:
+      'A full-width curtain and screen backdrop frames the stage for maximum visual impact from every seat.',
+    category: 'av',
+    cameraView: { distance: 8 },
+  },
+  {
+    id: 'banquet-seating',
+    anchor: { type: 'position', position: [0, 1, 20] },
+    title: 'Banquet Seating',
+    description:
+      'Round-table seating for banquet dinners, awards ceremonies, and networking sessions between sessions.',
+    category: 'furniture',
+    cameraView: { position: [0, 12, 4], distance: 20 },
+  },
+  {
+    id: 'exhibitor-tables',
+    anchor: { type: 'position', position: [-33, 1, 20] },
+    title: 'Exhibitor Tables',
+    description:
+      'Dedicated tables for sponsors and exhibiting partners to showcase their products alongside the main program.',
+    category: 'product',
+    cameraView: { position: [-33, 10, 0], distance: 18 },
+  },
+  {
+    id: 'registration',
+    anchor: { type: 'position', position: [16, 1.5, 78] },
+    title: 'Registration & Lobby',
+    description:
+      'The registration desk and lobby area — the first impression attendees get when they arrive.',
+    category: 'furniture',
+  },
+];
+
+/** Default export kept for backwards-compatible imports; prefer the named exports. */
+export const hotspots = placeholderHotspots;

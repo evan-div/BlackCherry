@@ -21,7 +21,7 @@ export function DemoApp() {
 
       <section className="demo-explorer-section">
         <h2>Explore the Show Floor</h2>
-        <TradeShowExplorer aspect={16 / 9} />
+        <TradeShowExplorer aspect={16 / 9} modelUrl="/models/trade-show.glb" />
       </section>
 
       <section className="demo-filler">

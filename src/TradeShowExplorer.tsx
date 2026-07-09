@@ -7,7 +7,7 @@ import { ErrorScreen } from './ui/ErrorScreen';
 import { HotspotCard } from './ui/HotspotCard';
 import './ui/styles.css';
 import { themeToCssVars } from './config/theme';
-import { hotspots as defaultHotspots } from './config/hotspots';
+import { placeholderHotspots, tradeShowHotspots } from './config/hotspots';
 import type { ExplorerProps } from './config/types';
 import { useDeactivationTriggers } from './hooks/useDeactivationTriggers';
 import { usePointerLockAvailable } from './hooks/usePointerLockAvailable';
@@ -48,7 +48,7 @@ export function TradeShowExplorer(props: ExplorerProps) {
 
 function ExplorerInner({
   modelUrl,
-  hotspots = defaultHotspots,
+  hotspots,
   theme,
   aspect = 16 / 9,
   height,
@@ -58,6 +58,7 @@ function ExplorerInner({
   posterUrl,
   onHotspotSelect,
 }: ExplorerProps) {
+  const resolvedHotspots = hotspots ?? (modelUrl ? tradeShowHotspots : placeholderHotspots);
   const rootRef = useRef<HTMLDivElement>(null);
   const cardAnchorRef = useRef<HTMLDivElement>(null);
   useDeactivationTriggers(rootRef);
@@ -158,7 +159,7 @@ function ExplorerInner({
                 modelUrl={modelUrl}
                 decoderPath={decoderPath}
                 ktx2Path={ktx2Path}
-                hotspots={hotspots}
+                hotspots={resolvedHotspots}
                 cardAnchorRef={cardAnchorRef}
                 isTouchOnly={isTouchOnly}
                 keysRef={keysRef}
@@ -171,8 +172,8 @@ function ExplorerInner({
           <ScenePoster posterUrl={posterUrl} />
         )}
       </div>
-      <Overlay hotspots={hotspots} />
-      <HotspotCard hotspots={hotspots} anchorRef={cardAnchorRef} onSelect={onHotspotSelect} />
+      <Overlay hotspots={resolvedHotspots} />
+      <HotspotCard hotspots={resolvedHotspots} anchorRef={cardAnchorRef} onSelect={onHotspotSelect} />
       <ErrorScreen onRetry={handleRetry} />
     </div>
   );

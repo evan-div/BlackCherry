@@ -2,9 +2,9 @@ import { useEffect, useRef } from 'react';
 import { OrbitControls } from '@react-three/drei';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import { Vector3 } from 'three';
-import { DEFAULT_CAMERA } from '../config/defaults';
 import { useFlyTo } from '../hooks/useFlyTo';
 import { useExplorerStore } from '../state/store';
+import { useSceneConfig } from '../scene/SceneConfig';
 
 const _min = new Vector3();
 const _max = new Vector3();
@@ -16,7 +16,8 @@ export function OrbitRig() {
   const ref = useRef<OrbitControlsImpl>(null);
   const activated = useExplorerStore((s) => s.activated);
   const onCameraCommand = useExplorerStore((s) => s.onCameraCommand);
-  const bounds = DEFAULT_CAMERA.targetBounds;
+  const { camera: cameraDefaults } = useSceneConfig();
+  const bounds = cameraDefaults.targetBounds;
   const flyTo = useFlyTo(ref);
 
   useEffect(() => {
@@ -26,14 +27,14 @@ export function OrbitRig() {
 
   // Set the initial orbit target imperatively, once, on mount — not via the
   // `target` JSX prop. On a fresh app load the camera already starts at
-  // DEFAULT_CAMERA.position/target (set declaratively on the Canvas itself), and on
+  // cameraDefaults.position/target (set declaratively on the Canvas itself), and on
   // a remount after returning from walk mode, CameraTransition has already eased
   // the camera to that same pose; imperatively nudging it again here is a safe
   // no-op either way, whereas a reactive `target` prop risks fighting a user's pan.
   useEffect(() => {
     const controls = ref.current;
     if (!controls) return;
-    controls.target.set(...DEFAULT_CAMERA.target);
+    controls.target.set(...cameraDefaults.target);
     controls.update();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -41,12 +42,12 @@ export function OrbitRig() {
   useEffect(() => {
     return onCameraCommand((cmd) => {
       if (cmd.type === 'reset') {
-        flyTo({ position: DEFAULT_CAMERA.position, target: DEFAULT_CAMERA.target });
+        flyTo({ position: cameraDefaults.position, target: cameraDefaults.target });
       } else if (cmd.type === 'flyTo') {
         flyTo({ position: cmd.position, target: cmd.target });
       }
     });
-  }, [flyTo, onCameraCommand]);
+  }, [flyTo, onCameraCommand, cameraDefaults]);
 
   const handleChange = () => {
     const controls = ref.current;
@@ -64,10 +65,10 @@ export function OrbitRig() {
       makeDefault
       enableDamping
       dampingFactor={0.08}
-      minDistance={DEFAULT_CAMERA.minDistance}
-      maxDistance={DEFAULT_CAMERA.maxDistance}
-      minPolarAngle={DEFAULT_CAMERA.minPolarAngle}
-      maxPolarAngle={DEFAULT_CAMERA.maxPolarAngle}
+      minDistance={cameraDefaults.minDistance}
+      maxDistance={cameraDefaults.maxDistance}
+      minPolarAngle={cameraDefaults.minPolarAngle}
+      maxPolarAngle={cameraDefaults.maxPolarAngle}
       enabled={activated}
       enablePan
       enableZoom

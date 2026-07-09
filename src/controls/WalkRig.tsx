@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef } from 'react';
 import type { RefObject } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { Euler, MathUtils } from 'three';
-import { DEFAULT_WALK } from '../config/defaults';
 import { useExplorerStore } from '../state/store';
+import { useSceneConfig } from '../scene/SceneConfig';
 import { createCollisionWorld } from './collision';
 import type { MovementKeys } from './useKeyboard';
 
@@ -25,7 +25,8 @@ const _euler = new Euler(0, 0, 0, 'YXZ');
 export function WalkRig({ keysRef }: WalkRigProps) {
   const { camera, gl, scene } = useThree();
   const pointerLockAvailable = useExplorerStore((s) => s.pointerLockAvailable);
-  const collision = useMemo(() => createCollisionWorld(scene), [scene]);
+  const { walk: walkDefaults } = useSceneConfig();
+  const collision = useMemo(() => createCollisionWorld(scene, walkDefaults), [scene, walkDefaults]);
 
   const lockedRef = useRef(false);
   const draggingRef = useRef(false);
@@ -101,7 +102,7 @@ export function WalkRig({ keysRef }: WalkRigProps) {
       moveForward /= len;
       moveRight /= len;
 
-      const speed = DEFAULT_WALK.speed * (keys.sprint ? DEFAULT_WALK.sprintMultiplier : 1);
+      const speed = walkDefaults.speed * (keys.sprint ? walkDefaults.sprintMultiplier : 1);
       const yaw = yawRef.current;
       const sin = Math.sin(yaw);
       const cos = Math.cos(yaw);
@@ -110,8 +111,8 @@ export function WalkRig({ keysRef }: WalkRigProps) {
       const dz = (-cos * moveForward - sin * moveRight) * speed * dt;
 
       const [clampedX, clampedZ] = collision.clampXZ(camera.position.x + dx, camera.position.z + dz);
-      const groundY = collision.groundHeightAt(clampedX, clampedZ, camera.position.y - DEFAULT_WALK.eyeHeight);
-      camera.position.set(clampedX, groundY + DEFAULT_WALK.eyeHeight, clampedZ);
+      const groundY = collision.groundHeightAt(clampedX, clampedZ, camera.position.y - walkDefaults.eyeHeight);
+      camera.position.set(clampedX, groundY + walkDefaults.eyeHeight, clampedZ);
     }
 
     state.invalidate();

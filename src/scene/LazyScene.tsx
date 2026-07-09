@@ -5,6 +5,7 @@ import { SceneRoot } from './SceneRoot';
 import { LoadingScreen } from '../ui/LoadingScreen';
 import type { Hotspot } from '../config/types';
 import type { MovementKeys } from '../controls/useKeyboard';
+import { DEFAULT_CAMERA, TRADE_SHOW_CAMERA } from '../config/defaults';
 
 interface LazySceneProps {
   modelUrl?: string;
@@ -27,9 +28,19 @@ interface LazySceneProps {
  * covers the window before this chunk itself has finished downloading.
  */
 export default function LazyScene({ onContextLost, ...sceneProps }: LazySceneProps) {
+  const hasModel = !!sceneProps.modelUrl;
+  const cameraDefaults = hasModel ? TRADE_SHOW_CAMERA : DEFAULT_CAMERA;
+  // Far plane must clear the whole scene depth-wise or distant geometry clips; the
+  // real trade show hall is ~120m deep vs. the placeholder's ~40m.
+  const far = hasModel ? 400 : 100;
+
   return (
     <>
-      <ExplorerCanvas onContextLost={onContextLost}>
+      <ExplorerCanvas
+        initialCameraPosition={cameraDefaults.position}
+        far={far}
+        onContextLost={onContextLost}
+      >
         <SceneRoot {...sceneProps} />
       </ExplorerCanvas>
       <LoadingScreen />
