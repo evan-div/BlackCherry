@@ -75,6 +75,15 @@ function ExplorerInner({
   const error = useExplorerStore((s) => s.error);
   const mode = useExplorerStore((s) => s.mode);
   const requestModeChange = useExplorerStore((s) => s.requestModeChange);
+  const selectHotspot = useExplorerStore((s) => s.selectHotspot);
+  const hoveredHotspotId = useExplorerStore((s) => s.hoveredHotspotId);
+  // Hotspots.tsx repurposes "hovered" as "currently looked at" while in walk mode
+  // (see its useFrame) — kept in a ref so the 'E' keydown handler always reads the
+  // latest value without re-subscribing the keyboard hook on every look change.
+  const hoveredHotspotIdRef = useRef(hoveredHotspotId);
+  useEffect(() => {
+    hoveredHotspotIdRef.current = hoveredHotspotId;
+  }, [hoveredHotspotId]);
 
   // The explorer root must hold real DOM focus for WASD keydown to reach its
   // (non-global) listeners at all — see useKeyboardMovement.
@@ -83,7 +92,10 @@ function ExplorerInner({
   }, [mode]);
 
   const handleExitWalk = useCallback(() => requestModeChange('explore'), [requestModeChange]);
-  const keysRef = useKeyboardMovement(rootRef, mode === 'walk', handleExitWalk);
+  const handleInteract = useCallback(() => {
+    if (hoveredHotspotIdRef.current) selectHotspot(hoveredHotspotIdRef.current);
+  }, [selectHotspot]);
+  const keysRef = useKeyboardMovement(rootRef, mode === 'walk', handleExitWalk, handleInteract);
   // Unmounting the Canvas after an error boundary catch also fires a genuine
   // 'webglcontextlost' event during teardown; without this guard that redundant
   // event would stomp the original, more specific error message.

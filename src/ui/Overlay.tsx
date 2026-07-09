@@ -26,7 +26,7 @@ export function Overlay({ hotspots }: OverlayProps) {
         <ControlsLegend />
         <HotspotList hotspots={hotspots} />
       </div>
-      <WalkInstructions />
+      <WalkInstructions hotspots={hotspots} />
       <ActivationShield />
     </div>
   );

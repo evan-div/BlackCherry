@@ -20,18 +20,27 @@ interface HotspotsProps {
 
 const CARD_WIDTH = 260;
 const CARD_MARGIN = 12;
+const LOOK_AT_MAX_DISTANCE = 15;
+// cos(~23deg) — a fairly tight "crosshair" cone so the nearest hotspot in view
+// doesn't steal the prompt from something the player is more precisely aiming at.
+const LOOK_AT_MIN_DOT = 0.92;
 const _projected = new Vector3();
 const _direction = new Vector3();
+const _forward = new Vector3();
+const _toHotspot = new Vector3();
 
 export function Hotspots({ hotspots, ready, cardAnchorRef, isTouchOnly }: HotspotsProps) {
   const anchors = useHotspotAnchors(hotspots, ready);
   const activeHotspotId = useExplorerStore((s) => s.activeHotspotId);
+  const mode = useExplorerStore((s) => s.mode);
+  const hoverHotspot = useExplorerStore((s) => s.hoverHotspot);
   const onCameraCommand = useExplorerStore((s) => s.onCameraCommand);
   const dispatchCameraCommand = useExplorerStore((s) => s.dispatchCameraCommand);
   const anchorsRef = useRef(anchors);
   anchorsRef.current = anchors;
   const hotspotsRef = useRef(hotspots);
   hotspotsRef.current = hotspots;
+  const lookAtRef = useRef<string | null>(null);
   const { invalidate, camera } = useThree((s) => ({ invalidate: s.invalidate, camera: s.camera }));
 
   // Selecting/closing a hotspot is a discrete UI event, not a camera move — under
@@ -74,6 +83,37 @@ export function Hotspots({ hotspots, ready, cardAnchorRef, isTouchOnly }: Hotspo
   }, [onCameraCommand, dispatchCameraCommand, camera]);
 
   useFrame((state) => {
+    // Walk mode: pointer lock hides and freezes the OS cursor, so clicking a
+    // screen-positioned marker doesn't work while locked. Instead, find whichever
+    // hotspot is most centered in the camera's forward view (within a tight cone
+    // and reasonable distance) and surface it via the existing hover state — reused
+    // here as "looked at", which also gives the marker the same hover styling —
+    // then WalkInstructions prompts "Press E" and useKeyboardMovement's 'KeyE'
+    // handler selects it.
+    if (mode === 'walk') {
+      _forward.set(0, 0, -1).applyQuaternion(state.camera.quaternion);
+      let bestId: string | null = null;
+      let bestDot = LOOK_AT_MIN_DOT;
+      anchorsRef.current.forEach((pos, id) => {
+        _toHotspot.subVectors(pos, state.camera.position);
+        const dist = _toHotspot.length();
+        if (dist > LOOK_AT_MAX_DISTANCE || dist < 0.01) return;
+        _toHotspot.divideScalar(dist);
+        const dot = _toHotspot.dot(_forward);
+        if (dot > bestDot) {
+          bestDot = dot;
+          bestId = id;
+        }
+      });
+      if (bestId !== lookAtRef.current) {
+        lookAtRef.current = bestId;
+        hoverHotspot(bestId);
+      }
+    } else if (lookAtRef.current !== null) {
+      lookAtRef.current = null;
+      hoverHotspot(null);
+    }
+
     // The bottom sheet on touch devices is positioned entirely by CSS; skip writing
     // an inline transform that would fight with it.
     if (isTouchOnly) return;

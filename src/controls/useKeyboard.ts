@@ -35,6 +35,7 @@ export function useKeyboardMovement(
   rootRef: RefObject<HTMLElement | null>,
   enabled: boolean,
   onEscape: () => void,
+  onInteract: () => void,
 ): RefObject<MovementKeys> {
   const keysRef = useRef<MovementKeys>(emptyKeys());
 
@@ -51,6 +52,13 @@ export function useKeyboardMovement(
         // shield on top of it.
         e.stopPropagation();
         onEscape();
+        return;
+      }
+      if (e.code === 'KeyE') {
+        // Pointer lock hides and freezes the cursor, so clicking a hotspot marker
+        // directly doesn't work while locked — "look at it, press E" is the
+        // reliable interaction path regardless of lock state.
+        onInteract();
         return;
       }
       const key = KEY_MAP[e.code];
@@ -84,7 +92,7 @@ export function useKeyboardMovement(
       root.removeEventListener('blur', handleBlur);
       keysRef.current = emptyKeys();
     };
-  }, [enabled, rootRef, onEscape]);
+  }, [enabled, rootRef, onEscape, onInteract]);
 
   return keysRef;
 }

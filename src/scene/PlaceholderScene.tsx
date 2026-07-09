@@ -18,9 +18,10 @@ export function PlaceholderScene() {
       {/* Camera presentation marker (read by useHotspotAnchors-style lookups later if needed) */}
       <object3D name="CAMERA_DEFAULT" position={[9, 6, 11]} />
 
-      {/* Reception desk */}
+      {/* Reception desk — named to match the walk-mode collision system's
+          furniture-obstacle pattern (see controls/collision.ts), so it's solid. */}
       <group position={[-8, 0, -6]}>
-        <mesh position={[0, 0.55, 0]} castShadow receiveShadow>
+        <mesh name="counter-reception" position={[0, 0.55, 0]} castShadow receiveShadow>
           <boxGeometry args={[3.2, 1.1, 0.8]} />
           <meshStandardMaterial color="#1f2430" roughness={0.4} metalness={0.1} />
         </mesh>
@@ -77,11 +78,12 @@ export function PlaceholderScene() {
         <object3D name="HS_signage-tower" position={[0, 5.6, 0.1]} />
       </group>
 
-      {/* Ambient booth clutter for visual richness / scale reference */}
+      {/* Ambient booth clutter for visual richness / scale reference — also solid,
+          via the same "table" name-pattern match as the reception counter. */}
       {[
         [-11, -3], [-6, 3], [3, -7], [12, 2], [-2, -3], [6, -3],
       ].map(([x, z], i) => (
-        <mesh key={i} position={[x, 0.35, z]} castShadow receiveShadow>
+        <mesh key={i} name={`table-clutter-${i}`} position={[x, 0.35, z]} castShadow receiveShadow>
           <boxGeometry args={[1.4, 0.7, 1.4]} />
           <meshStandardMaterial color="#aeb2bd" roughness={0.85} />
         </mesh>
