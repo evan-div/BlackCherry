@@ -76,6 +76,7 @@ function ExplorerInner({
   const mode = useExplorerStore((s) => s.mode);
   const requestModeChange = useExplorerStore((s) => s.requestModeChange);
   const selectHotspot = useExplorerStore((s) => s.selectHotspot);
+  const activeHotspotId = useExplorerStore((s) => s.activeHotspotId);
   const hoveredHotspotId = useExplorerStore((s) => s.hoveredHotspotId);
   // Hotspots.tsx repurposes "hovered" as "currently looked at" while in walk mode
   // (see its useFrame) — kept in a ref so the 'E' keydown handler always reads the
@@ -86,10 +87,16 @@ function ExplorerInner({
   }, [hoveredHotspotId]);
 
   // The explorer root must hold real DOM focus for WASD keydown to reach its
-  // (non-global) listeners at all — see useKeyboardMovement.
+  // (non-global) listeners at all — see useKeyboardMovement. Also re-focus it
+  // whenever a hotspot card closes: its close button is itself a focused DOM
+  // element, and browsers drop focus to <body> when a focused element is
+  // removed rather than restoring whatever was focused before — silently
+  // breaking WASD (which needs focus on this root) while mouse-look (a
+  // window-level listener, focus-independent) keeps working, which is exactly
+  // the "I can look around but can't move" bug this guards against.
   useEffect(() => {
-    if (mode === 'walk') rootRef.current?.focus();
-  }, [mode]);
+    if (mode === 'walk' && !activeHotspotId) rootRef.current?.focus();
+  }, [mode, activeHotspotId]);
 
   const handleExitWalk = useCallback(() => requestModeChange('explore'), [requestModeChange]);
   const handleInteract = useCallback(() => {
