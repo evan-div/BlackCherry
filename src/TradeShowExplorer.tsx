@@ -7,10 +7,12 @@ import { ErrorScreen } from './ui/ErrorScreen';
 import { HotspotCard } from './ui/HotspotCard';
 import './ui/styles.css';
 import { themeToCssVars } from './config/theme';
+import { DEFAULT_WALK, TRADE_SHOW_WALK } from './config/defaults';
 import { placeholderHotspots, tradeShowHotspots } from './config/hotspots';
 import type { ExplorerProps } from './config/types';
 import { useAnalyticsEvents } from './hooks/useAnalyticsEvents';
 import { useDeactivationTriggers } from './hooks/useDeactivationTriggers';
+import { useGuidedTour } from './hooks/useGuidedTour';
 import { usePointerLockAvailable } from './hooks/usePointerLockAvailable';
 import { useWebglSupported } from './hooks/useWebglSupported';
 import { useIsTouchOnly } from './hooks/useIsTouchOnly';
@@ -105,6 +107,8 @@ function ExplorerInner({
     (hotspotId: string, ctaUrl: string) => emitAnalytics({ type: 'cta_clicked', hotspotId, ctaUrl }),
     [emitAnalytics],
   );
+  const { tourActive, startTour, stopTour } = useGuidedTour(rootRef, resolvedHotspots, emitAnalytics);
+  const handleTourStop = useCallback(() => stopTour('stopped'), [stopTour]);
   const handleExitWalk = useCallback(() => requestModeChange('explore'), [requestModeChange]);
   const handleInteract = useCallback(() => {
     if (hoveredHotspotIdRef.current) selectHotspot(hoveredHotspotIdRef.current);
@@ -220,7 +224,11 @@ function ExplorerInner({
           <ScenePoster posterUrl={posterUrl} />
         )}
       </div>
-      <Overlay hotspots={resolvedHotspots} />
+      <Overlay
+        hotspots={resolvedHotspots}
+        tour={{ active: tourActive, onStart: startTour, onStop: handleTourStop }}
+        walkBounds={(modelUrl ? TRADE_SHOW_WALK : DEFAULT_WALK).bounds}
+      />
       <HotspotCard
         hotspots={resolvedHotspots}
         anchorRef={cardAnchorRef}

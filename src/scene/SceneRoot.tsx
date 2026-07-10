@@ -84,7 +84,7 @@ export function SceneRoot({
       <color attach="background" args={['#dde1e8']} />
       <fog attach="fog" args={['#dde1e8', fogNear, fogFar]} />
       <ControlsRig keysRef={keysRef} />
-      <Lighting />
+      <Lighting venueScale={!!modelUrl} />
       <Suspense fallback={null}>
         {modelUrl ? (
           <TradeShowModel

@@ -31,6 +31,13 @@ export interface ExplorerState {
   error: string | null;
   activeHotspotId: string | null;
   hoveredHotspotId: string | null;
+  /** True while the guided tour is auto-driving the camera (see useGuidedTour). */
+  tourActive: boolean;
+  /** Mutable per-frame walk pose, written by WalkRig and read by the DOM minimap's
+   * own rAF loop. Deliberately a stable object that gets MUTATED, never replaced —
+   * putting x/z/yaw through set() would re-render every store subscriber at frame
+   * rate. Not reactive state; just a per-instance shared mailbox. */
+  walkPose: { x: number; z: number; yaw: number; hasPose: boolean };
   pointerLockAvailable: boolean;
   isTouchOnly: boolean;
   /** Bumped to force-remount the canvas subtree, e.g. on error retry. */
@@ -45,6 +52,7 @@ export interface ExplorerState {
   deactivate: () => void;
   selectHotspot: (id: string | null) => void;
   hoverHotspot: (id: string | null) => void;
+  setTourActive: (value: boolean) => void;
   setLoading: (loading: Partial<LoadingState>) => void;
   setError: (error: string | null) => void;
   setPointerLockAvailable: (value: boolean) => void;
@@ -84,6 +92,8 @@ export function createExplorerStore(initialMode: ExplorerMode = 'explore'): Stor
     error: null,
     activeHotspotId: null,
     hoveredHotspotId: null,
+    tourActive: false,
+    walkPose: { x: 0, z: 0, yaw: 0, hasPose: false },
     pointerLockAvailable: false,
     isTouchOnly: false,
     retryKey: 0,
@@ -95,6 +105,7 @@ export function createExplorerStore(initialMode: ExplorerMode = 'explore'): Stor
     deactivate: () => set({ activated: false, activeHotspotId: null }),
     selectHotspot: (id) => set({ activeHotspotId: id }),
     hoverHotspot: (id) => set({ hoveredHotspotId: id }),
+    setTourActive: (value) => set({ tourActive: value }),
     setLoading: (loading) => set((s) => ({ loading: { ...s.loading, ...loading } })),
     setError: (error) => set({ error }),
     setPointerLockAvailable: (value) => set({ pointerLockAvailable: value }),

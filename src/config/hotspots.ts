@@ -60,16 +60,25 @@ export const placeholderHotspots: Hotspot[] = [
 ];
 
 /**
- * Hotspots for the real trade-show.glb. That particular export has no authored
- * `HS_*` anchor Empties (see README's Blender export checklist for the naming
- * contract a future export should follow), so these use hand-picked
- * `{ type: 'position', ... }` coordinates read from the model's actual geometry
- * instead — workable, but brittler across re-exports than node anchors.
+ * Hotspots for the real trade-show.glb — THE content file marketing edits.
+ *
+ * Each entry follows the export contract: the anchor names an `HS_<id>` Empty in
+ * the Blender file, with `fallbackPosition` carrying today's hand-measured
+ * coordinates until an export that includes those Empties ships (once it does,
+ * the authored positions win automatically and the fallbacks become dead weight
+ * that can be deleted).
+ *
+ * Content conventions:
+ * - `image`: drop a photo at `public/images/hotspots/<id>.jpg` (~800×500, JPEG,
+ *   <150KB) and set `image: '/images/hotspots/<id>.jpg'`. Omit the field until
+ *   the file exists — a missing image renders as a broken-image icon.
+ * - `ctaUrl`/`ctaLabel`: the card's button. Point it at the real product/service
+ *   page; '#' placeholders just scroll to the top of the host page.
  */
 export const tradeShowHotspots: Hotspot[] = [
   {
     id: 'main-stage',
-    anchor: { type: 'position', position: [0, 2, 3] },
+    anchor: { type: 'node', nodeName: 'HS_main-stage', fallbackPosition: [0, 2, 3] },
     title: 'Main Stage',
     description:
       'The keynote stage with podium, ready for keynote speakers, panels, and product announcements.',
@@ -80,7 +89,7 @@ export const tradeShowHotspots: Hotspot[] = [
   },
   {
     id: 'stage-backdrop',
-    anchor: { type: 'position', position: [0, 3.5, -3] },
+    anchor: { type: 'node', nodeName: 'HS_stage-backdrop', fallbackPosition: [0, 3.5, -3] },
     title: 'Presentation Backdrop',
     description:
       'A full-width curtain and screen backdrop frames the stage for maximum visual impact from every seat.',
@@ -91,7 +100,7 @@ export const tradeShowHotspots: Hotspot[] = [
   },
   {
     id: 'banquet-seating',
-    anchor: { type: 'position', position: [0, 1, 20] },
+    anchor: { type: 'node', nodeName: 'HS_banquet-seating', fallbackPosition: [0, 1, 20] },
     title: 'Banquet Seating',
     description:
       'Round-table seating for banquet dinners, awards ceremonies, and networking sessions between sessions.',
@@ -102,7 +111,7 @@ export const tradeShowHotspots: Hotspot[] = [
   },
   {
     id: 'exhibitor-tables',
-    anchor: { type: 'position', position: [-33, 1, 20] },
+    anchor: { type: 'node', nodeName: 'HS_exhibitor-tables', fallbackPosition: [-33, 1, 20] },
     title: 'Exhibitor Tables',
     description:
       'Dedicated tables for sponsors and exhibiting partners to showcase their products alongside the main program.',
@@ -113,7 +122,7 @@ export const tradeShowHotspots: Hotspot[] = [
   },
   {
     id: 'registration',
-    anchor: { type: 'position', position: [16, 1.5, 78] },
+    anchor: { type: 'node', nodeName: 'HS_registration', fallbackPosition: [16, 1.5, 78] },
     title: 'Registration & Lobby',
     description:
       'The registration desk and lobby area — the first impression attendees get when they arrive.',

@@ -111,7 +111,12 @@ Hotspots are plain data in `src/config/hotspots.ts` — no rendering logic to to
 
 Prefer `{ type: 'node', nodeName: '...' }` anchors over hardcoded
 `{ type: 'position', position: [...] }` coordinates — node anchors survive Blender
-re-exports; hardcoded coordinates don't.
+re-exports; hardcoded coordinates don't. A node anchor can carry a
+`fallbackPosition` used until the named Empty actually ships in the asset.
+
+Card photos: drop a ~800×500 JPEG (<150KB) at `public/images/hotspots/<id>.jpg`
+and set `image: '/images/hotspots/<id>.jpg'` on the hotspot. Leave the field off
+until the file exists.
 
 ## Blender → GLB export checklist
 
@@ -119,24 +124,57 @@ re-exports; hardcoded coordinates don't.
 - Join meshes by material where possible — draw calls matter more than poly count.
   Target ≤150 mesh/material combinations, ≤1.5M triangles for the whole floor.
 - Add an Empty named `HS_<hotspot-id>` at each hotspot anchor point (must match the
-  `nodeName` in `hotspots.ts`).
-- Add an Empty named `CAMERA_DEFAULT` at the desired default presentation viewpoint.
-- Add a separate, simplified collision mesh (floor + boxy wall/booth blockers, a few
-  thousand triangles) with every object named starting `COLLISION` — this drives
-  walk-mode ground height and boundaries (`src/controls/collision.ts`). Without it,
-  walk mode falls back to a flat plane and a hard bounding box.
-- Bake lighting into base color textures where practical — the app uses a procedural
-  IBL + one directional light with a single non-updating shadow map, not full
-  real-time shadows.
+  `nodeName` in `hotspots.ts`). The app checks for these on load; a config can also
+  carry a `fallbackPosition` per anchor, used until the empties ship in the asset.
+- Add Empties named `CAMERA_DEFAULT` (where the opening camera sits) and
+  `CAMERA_TARGET` (what it looks at). The app reads both on load and they win over
+  the hand-tuned defaults in `src/config/defaults.ts`.
+- Add a separate, simplified collision mesh set — floor + boxy wall/booth blockers,
+  a few thousand triangles — with every object named starting `COLLISION`. When
+  present, walk mode raycasts ONLY against these (cheaper and intentional: you
+  decide exactly what blocks movement); the app hides them from render
+  automatically. Without them, walk mode raycasts the full visible geometry.
 - Export: glTF Binary (.glb), +Y up, apply modifiers on, punctual lights + cameras
-  off (the app supplies its own lighting and reads `CAMERA_DEFAULT` instead).
+  off (the app supplies its own lighting and reads the `CAMERA_*` empties instead).
 - Compress with [gltf-transform](https://gltf-transform.dev/) rather than Blender's
   built-in Draco export, so the pipeline is re-runnable:
   ```bash
   npm run optimize-model   # Draco-compresses public/models/trade-show.glb in place
   ```
+  Heads-up: the optimizer's `join` step merges meshes that share a material and
+  destroys per-object names in the process — keep `HS_*`, `CAMERA_*`, and
+  `COLLISION*` prefixes intact by checking the output in a viewer, and prefer
+  giving collision proxies their own material so they never merge with visuals.
 - Sanity-check the result at https://gltf-viewer.donmccurdy.com/ before handing off:
   orientation, materials, and that the Empties survived the export.
+
+## Making it look premium: baking lighting in Blender
+
+The single biggest visual upgrade available is baked lighting — the app's runtime
+lighting (procedural IBL + one shadow-mapped key light) is deliberately cheap, and
+it cannot produce the soft contact shadows, bounced color, and depth that make
+architectural renders read as "real". Baking moves that quality offline:
+
+1. **Light the scene properly in Blender** with area lights/HDRI in Cycles —
+   whatever looks good in a Blender render is what you'll get on the web.
+2. **Bake ambient occlusion at minimum.** Select the large static surfaces (floor,
+   walls, booth shells), give them a second UV channel (Smart UV Project is fine),
+   and bake AO (`Bake type: Ambient Occlusion`, ~1024–2048px per major surface).
+   Multiply the AO into the base color textures (or wire it to the glTF settings
+   node so it exports as the occlusion map).
+3. **Full lightmap bake for hero areas** (stage, registration): `Bake type:
+   Combined` with `Direct + Indirect` contributions, then plug the result in as
+   emissive or pre-multiplied base color. This is what makes floors glow softly
+   under stage lighting.
+4. **Compress textures to KTX2** so the added texture weight stays cheap on the
+   GPU (KTX2 stays compressed in VRAM; PNG/JPG decompress to full size):
+   ```bash
+   npx gltf-transform etc1s public/models/trade-show.glb public/models/trade-show.glb
+   ```
+   The app already ships the KTX2/basis transcoder and wires it into the loader
+   (`ktx2Path` prop), so KTX2 textures load with zero code changes.
+5. Re-run `npm run optimize-model`, then eyeball the result in the viewer before
+   committing.
 
 ## Architecture
 

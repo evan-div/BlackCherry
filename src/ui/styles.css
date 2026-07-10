@@ -484,6 +484,44 @@
   font-weight: 600;
 }
 
+/* ---------- Walk-mode minimap ---------- */
+
+.tse-minimap {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  width: 110px;
+  /* Matches the venue's XZ proportions closely enough to read as its footprint. */
+  height: 132px;
+  border-radius: calc(var(--tse-radius, 10px) * 0.7);
+  background: rgba(18, 20, 26, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(8px);
+  overflow: hidden;
+  pointer-events: none;
+}
+.tse-minimap__hotspot {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--tse-accent, #c8102e);
+  transform: translate(-50%, -50%);
+}
+.tse-minimap__player {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  /* A small upward-pointing wedge; JS rotates it to the camera heading. */
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-bottom: 10px solid #fff;
+  transform: translate(-50%, -50%);
+  filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.6));
+}
+
 .tse-touch-disabled-note {
   font-size: 11px;
   opacity: 0.7;

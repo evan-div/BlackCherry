@@ -29,6 +29,9 @@ export function WalkRig({ keysRef }: WalkRigProps) {
   const { camera, gl, scene, invalidate, events } = useThree();
   const pointerLockAvailable = useExplorerStore((s) => s.pointerLockAvailable);
   const activeHotspotId = useExplorerStore((s) => s.activeHotspotId);
+  // Mutated per frame below (never replaced) — the minimap reads it on its own
+  // rAF loop; see the field's comment in createExplorerStore.
+  const walkPose = useExplorerStore((s) => s.walkPose);
   const { walk: walkDefaults } = useSceneConfig();
   const collision = useMemo(() => createCollisionWorld(scene, walkDefaults), [scene, walkDefaults]);
 
@@ -133,6 +136,11 @@ export function WalkRig({ keysRef }: WalkRigProps) {
   }, [gl, events, pointerLockAvailable, invalidate]);
 
   useFrame((state, dt) => {
+    walkPose.x = camera.position.x;
+    walkPose.z = camera.position.z;
+    walkPose.yaw = yawRef.current;
+    walkPose.hasPose = true;
+
     // A hotspot card is open — freeze the player in place so they can read it
     // and use its buttons instead of accidentally walking off while looking down
     // to click something.
