@@ -351,9 +351,6 @@
   background: rgba(10, 12, 18, 0.62);
   transform: translate(-50%, -50%) scale(1);
 }
-.tse-hotspot-marker--occluded {
-  opacity: 0.32;
-}
 
 .tse-hotspot-card {
   position: absolute;

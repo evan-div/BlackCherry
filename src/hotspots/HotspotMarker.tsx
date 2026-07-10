@@ -21,11 +21,14 @@ export function HotspotMarker({ hotspot, position }: HotspotMarkerProps) {
       position={position}
       center
       transform={false}
-      // "blending" is drei's built-in occlusion mode: it fades the marker via a cheap
-      // GPU depth comparison rather than a hand-rolled per-frame raycast batch —
-      // functionally the same "fade when hidden behind geometry" UX the plan called
-      // for, with no extra code to maintain.
-      occlude="blending"
+      // No `occlude` prop: drei's GPU depth-texture occlusion modes ("blending"/
+      // "raycast") turned out unreliable — verified via screenshot that the ring
+      // could render with effectively zero visible opacity despite every DOM/CSS
+      // property (computed opacity, size, position) reporting normal values, an
+      // occlusion-texture-specific failure invisible to those checks. A landmark
+      // ring that's meant to always read as "there's something here" is better
+      // served by always being visible than by a fade effect that can silently
+      // break.
       zIndexRange={[10, 0]}
       // In walk mode the marker is purely a visual indicator (still shown/
       // highlighted via the look-at logic in Hotspots.tsx) — pointer-events is
