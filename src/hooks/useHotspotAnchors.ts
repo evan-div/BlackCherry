@@ -27,7 +27,11 @@ export function useHotspotAnchors(hotspots: Hotspot[], ready: boolean): Map<stri
       }
       const node = scene.getObjectByName(hotspot.anchor.nodeName);
       if (!node) {
-        missing.push(hotspot.anchor.nodeName);
+        if (hotspot.anchor.fallbackPosition) {
+          map.set(hotspot.id, new Vector3(...hotspot.anchor.fallbackPosition));
+        } else {
+          missing.push(hotspot.anchor.nodeName);
+        }
         continue;
       }
       const pos = new Vector3();

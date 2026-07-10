@@ -1,7 +1,15 @@
 /** Where a hotspot sits in the scene. Prefer `node` — it survives model re-exports;
- * `position` is a fallback for scenes without authored anchor Empties. */
+ * `position` is a fallback for scenes without authored anchor Empties. A node anchor
+ * may carry its own `fallbackPosition`, used when the named node isn't in the scene
+ * (yet) — this lets configs be written against the export contract's `HS_<id>`
+ * empties before the asset actually ships them. */
 export type HotspotAnchor =
-  | { type: 'node'; nodeName: string; offset?: [number, number, number] }
+  | {
+      type: 'node';
+      nodeName: string;
+      offset?: [number, number, number];
+      fallbackPosition?: [number, number, number];
+    }
   | { type: 'position'; position: [number, number, number] };
 
 export type HotspotCategory =

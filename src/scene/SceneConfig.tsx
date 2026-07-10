@@ -1,4 +1,4 @@
-import { createContext, useContext } from 'react';
+import { createContext, useContext, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import type { CameraDefaults, WalkDefaults } from '../config/types';
 import {
@@ -13,6 +13,15 @@ interface SceneConfig {
   walk: WalkDefaults;
 }
 
+/** Camera pose authored INSIDE the model per the Blender export contract:
+ * `CAMERA_DEFAULT` / `CAMERA_TARGET` empties, resolved by SceneRoot after the
+ * GLTF loads. Wins over the hand-tuned config defaults when present, so a
+ * re-export can move the opening shot without a code change. */
+export interface AuthoredCameraPose {
+  position?: [number, number, number];
+  target?: [number, number, number];
+}
+
 const SceneConfigContext = createContext<SceneConfig>({
   camera: DEFAULT_CAMERA,
   walk: DEFAULT_WALK,
@@ -22,10 +31,29 @@ const SceneConfigContext = createContext<SceneConfig>({
  * small procedural placeholder, or the real (much larger) trade show model. Consumed
  * by OrbitRig/WalkRig/CameraTransition/collision instead of importing the raw
  * defaults directly, so those don't need to know which scene is active. */
-export function SceneConfigProvider({ hasModel, children }: { hasModel: boolean; children: ReactNode }) {
-  const value: SceneConfig = hasModel
-    ? { camera: TRADE_SHOW_CAMERA, walk: TRADE_SHOW_WALK }
-    : { camera: DEFAULT_CAMERA, walk: DEFAULT_WALK };
+export function SceneConfigProvider({
+  hasModel,
+  authoredCamera,
+  children,
+}: {
+  hasModel: boolean;
+  authoredCamera?: AuthoredCameraPose | null;
+  children: ReactNode;
+}) {
+  const value = useMemo<SceneConfig>(() => {
+    const base = hasModel
+      ? { camera: TRADE_SHOW_CAMERA, walk: TRADE_SHOW_WALK }
+      : { camera: DEFAULT_CAMERA, walk: DEFAULT_WALK };
+    if (!authoredCamera) return base;
+    return {
+      ...base,
+      camera: {
+        ...base.camera,
+        ...(authoredCamera.position ? { position: authoredCamera.position } : null),
+        ...(authoredCamera.target ? { target: authoredCamera.target } : null),
+      },
+    };
+  }, [hasModel, authoredCamera]);
   return <SceneConfigContext.Provider value={value}>{children}</SceneConfigContext.Provider>;
 }
 

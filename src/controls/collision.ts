@@ -60,6 +60,22 @@ function ensureBvh(root: Object3D) {
   });
 }
 
+/** Authored collision proxies per the Blender export contract (README): every mesh
+ * named `COLLISION*` forms a simplified floor+walls set that walk mode should test
+ * against INSTEAD of the full render geometry — both cheaper (a few thousand
+ * triangles vs. the whole hall) and more intentional (authors decide exactly what
+ * blocks movement). TradeShowModel hides these from render; three's Raycaster
+ * ignores visibility, so they stay hittable. */
+function collectCollisionProxies(root: Object3D): Mesh[] {
+  const proxies: Mesh[] = [];
+  root.traverse((obj) => {
+    if (obj instanceof Mesh && obj.name.startsWith('COLLISION')) {
+      proxies.push(obj);
+    }
+  });
+  return proxies;
+}
+
 export interface CollisionWorld {
   groundHeightAt: (x: number, z: number, fallback: number) => number;
   /**
@@ -100,6 +116,11 @@ export interface CollisionWorld {
 export function createCollisionWorld(root: Object3D, walkDefaults: WalkDefaults): CollisionWorld {
   const bounds = walkDefaults.bounds;
   ensureBvh(root);
+  // With authored proxies, both wall and ground tests run against just those
+  // meshes (the contract says the proxy set includes the floor). Without them,
+  // fall back to raycasting the full render geometry.
+  const proxies = collectCollisionProxies(root);
+  const castTargets: Object3D[] = proxies.length > 0 ? proxies : [root];
 
   function isBlocked(fromX: number, fromZ: number, toX: number, toZ: number, eyeY: number, radius: number): boolean {
     const dx = toX - fromX;
@@ -113,7 +134,7 @@ export function createCollisionWorld(root: Object3D, walkDefaults: WalkDefaults)
       _origin.set(fromX, eyeY + offset, fromZ);
       wallRaycaster.set(_origin, _dir);
       wallRaycaster.far = probeDist;
-      if (wallRaycaster.intersectObject(root, true).length > 0) return true;
+      if (wallRaycaster.intersectObjects(castTargets, true).length > 0) return true;
     }
     return false;
   }
@@ -128,7 +149,7 @@ export function createCollisionWorld(root: Object3D, walkDefaults: WalkDefaults)
   function rawGroundHeightAt(x: number, z: number): number | null {
     _origin.set(x, 50, z);
     groundRaycaster.set(_origin, _down);
-    const hits = groundRaycaster.intersectObject(root, true);
+    const hits = groundRaycaster.intersectObjects(castTargets, true);
     return hits.length === 0 ? null : hits[0].point.y;
   }
 

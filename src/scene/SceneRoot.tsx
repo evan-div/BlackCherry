@@ -1,5 +1,6 @@
 import { Suspense, useCallback, useEffect, useState } from 'react';
 import type { RefObject } from 'react';
+import { Vector3 } from 'three';
 import type { Group } from 'three';
 import { ControlsRig } from '../controls/ControlsRig';
 import type { MovementKeys } from '../controls/useKeyboard';
@@ -8,7 +9,28 @@ import { Hotspots } from '../hotspots/Hotspots';
 import { Lighting } from './Lighting';
 import { PlaceholderScene } from './PlaceholderScene';
 import { SceneConfigProvider } from './SceneConfig';
+import type { AuthoredCameraPose } from './SceneConfig';
 import { TradeShowModel } from './TradeShowModel';
+
+const _world = new Vector3();
+
+/** Reads the export contract's `CAMERA_DEFAULT` / `CAMERA_TARGET` empties out of a
+ * loaded model, if the artist authored them (see README's Blender checklist). */
+function resolveAuthoredCamera(scene: Group): AuthoredCameraPose | null {
+  const positionNode = scene.getObjectByName('CAMERA_DEFAULT');
+  const targetNode = scene.getObjectByName('CAMERA_TARGET');
+  if (!positionNode && !targetNode) return null;
+  const pose: AuthoredCameraPose = {};
+  if (positionNode) {
+    positionNode.getWorldPosition(_world);
+    pose.position = [_world.x, _world.y, _world.z];
+  }
+  if (targetNode) {
+    targetNode.getWorldPosition(_world);
+    pose.target = [_world.x, _world.y, _world.z];
+  }
+  return pose;
+}
 
 interface SceneRootProps {
   modelUrl?: string;
@@ -37,6 +59,7 @@ export function SceneRoot({
   onModelLoaded,
 }: SceneRootProps) {
   const [ready, setReady] = useState(!modelUrl);
+  const [authoredCamera, setAuthoredCamera] = useState<AuthoredCameraPose | null>(null);
 
   useEffect(() => {
     if (!modelUrl) setReady(true);
@@ -44,6 +67,7 @@ export function SceneRoot({
 
   const handleModelLoaded = useCallback(
     (scene: Group) => {
+      setAuthoredCamera(resolveAuthoredCamera(scene));
       setReady(true);
       onModelLoaded?.(scene);
     },
@@ -56,7 +80,7 @@ export function SceneRoot({
   const [fogNear, fogFar] = modelUrl ? [60, 150] : [22, 42];
 
   return (
-    <SceneConfigProvider hasModel={!!modelUrl}>
+    <SceneConfigProvider hasModel={!!modelUrl} authoredCamera={authoredCamera}>
       <color attach="background" args={['#dde1e8']} />
       <fog attach="fog" args={['#dde1e8', fogNear, fogFar]} />
       <ControlsRig keysRef={keysRef} />
