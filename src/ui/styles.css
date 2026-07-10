@@ -356,6 +356,13 @@
 
 .tse-hotspot-card {
   position: absolute;
+  /* The projector in Hotspots.tsx positions this with an inline
+   * translate3d(x, y, 0) computed relative to the canvas's top-left corner —
+   * without an explicit top:0/left:0 anchor here, 'auto' falls back to this
+   * element's static position in document flow (after the canvas), pushing the
+   * translated box far past where it's meant to land. */
+  top: 0;
+  left: 0;
   z-index: var(--tse-z-card);
   width: 320px;
   background: rgba(16, 18, 24, 0.95);
