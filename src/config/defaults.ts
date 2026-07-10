@@ -19,7 +19,7 @@ export const DEFAULT_CAMERA: CameraDefaults = {
 export const DEFAULT_WALK: WalkDefaults = {
   eyeHeight: 1.65,
   speed: 3,
-  sprintMultiplier: 1.8,
+  sprintMultiplier: 2.5,
   radius: 0.35,
   bounds: {
     min: [-15, -11],
@@ -51,7 +51,7 @@ export const TRADE_SHOW_CAMERA: CameraDefaults = {
 export const TRADE_SHOW_WALK: WalkDefaults = {
   eyeHeight: 1.65,
   speed: 3.5,
-  sprintMultiplier: 1.8,
+  sprintMultiplier: 2.5,
   radius: 0.35,
   // Trimmed a few meters inside the model's actual bounding box (bbox min/max is
   // roughly X:[-61,41] Z:[-16,105]) as a safety margin against walking through
