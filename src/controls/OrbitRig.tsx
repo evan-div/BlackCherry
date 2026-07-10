@@ -18,7 +18,7 @@ export function OrbitRig() {
   const onCameraCommand = useExplorerStore((s) => s.onCameraCommand);
   const { camera: cameraDefaults } = useSceneConfig();
   const bounds = cameraDefaults.targetBounds;
-  const flyTo = useFlyTo(ref);
+  const { flyTo, cancelFlyTo } = useFlyTo(ref);
 
   useEffect(() => {
     _min.set(...bounds.min);
@@ -74,6 +74,11 @@ export function OrbitRig() {
       enableZoom
       enableRotate
       onChange={handleChange}
+      // Fires the instant the user starts a manual drag/scroll — cancels any
+      // in-flight fly-to so their input takes over immediately instead of being
+      // fought (and overridden) by the animation for however long it takes to
+      // fully settle. See useFlyTo's cancelFlyTo for why that tail matters.
+      onStart={cancelFlyTo}
     />
   );
 }

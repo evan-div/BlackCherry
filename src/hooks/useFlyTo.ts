@@ -43,5 +43,16 @@ export function useFlyTo(controlsRef: React.RefObject<OrbitControlsImpl | null>)
     invalidate();
   }, [invalidate]);
 
-  return flyTo;
+  // The damp-toward-goal loop above keeps overriding camera.position/controls.target
+  // every frame for as long as `goal` is set — including for a couple of seconds
+  // after a fly-to *looks* finished, since closing the last fraction of a percent
+  // of distance under exponential damping takes a while. Without this, a user who
+  // starts dragging to orbit/pan during that tail end gets fought frame-by-frame
+  // and snapped back toward the hotspot, unable to look away. OrbitRig wires this
+  // to the controls' own 'start' event, which fires the instant a drag begins.
+  const cancelFlyTo = useCallback(() => {
+    goal.current = null;
+  }, []);
+
+  return { flyTo, cancelFlyTo };
 }
