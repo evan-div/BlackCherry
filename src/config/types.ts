@@ -44,6 +44,20 @@ export interface ExplorerTheme {
 
 export type ExplorerMode = 'explore' | 'walk';
 
+/**
+ * Discrete interaction events for host-page analytics (GA/Segment/etc.).
+ * Deliberately a closed union — hosts can exhaustively switch on `type`,
+ * and adding a variant is an API change reviewers will see.
+ */
+export type ExplorerAnalyticsEvent =
+  | { type: 'activated' }
+  | { type: 'mode_changed'; mode: ExplorerMode }
+  | { type: 'hotspot_opened'; hotspotId: string }
+  | { type: 'hotspot_closed'; hotspotId: string }
+  | { type: 'cta_clicked'; hotspotId: string; ctaUrl: string }
+  | { type: 'tour_started' }
+  | { type: 'tour_ended'; reason: 'completed' | 'user_input' | 'stopped' };
+
 export interface Vec3Tuple extends Array<number> {
   0: number;
   1: number;
@@ -88,4 +102,7 @@ export interface ExplorerProps {
   posterUrl?: string;
   onHotspotSelect?: (id: string | null) => void;
   onModeChange?: (mode: ExplorerMode) => void;
+  /** Fired on discrete user interactions (hotspot opened, CTA clicked, mode
+   * switched…) so the host page can forward them to its analytics stack. */
+  onAnalyticsEvent?: (event: ExplorerAnalyticsEvent) => void;
 }

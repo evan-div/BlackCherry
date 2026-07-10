@@ -1,4 +1,7 @@
+import { useRef } from 'react';
 import { Html } from '@react-three/drei';
+import { useFrame } from '@react-three/fiber';
+import { MathUtils } from 'three';
 import type { Vector3 } from 'three';
 import type { Hotspot } from '../config/types';
 import { useExplorerStore } from '../state/store';
@@ -8,6 +11,14 @@ interface HotspotMarkerProps {
   position: Vector3;
 }
 
+/** Distance (meters) at which a marker renders at its natural CSS size; nearer
+ * markers grow and farther ones shrink, both clamped so the ring never balloons
+ * when walked right up to nor shrinks to an unreadable dot across the hall.
+ * (drei Html's own `distanceFactor` does this scaling too, but without clamps.) */
+const MARKER_REFERENCE_DISTANCE = 14;
+const MARKER_MIN_SCALE = 0.55;
+const MARKER_MAX_SCALE = 1.15;
+
 export function HotspotMarker({ hotspot, position }: HotspotMarkerProps) {
   const isActive = useExplorerStore((s) => s.activeHotspotId === hotspot.id);
   const isHovered = useExplorerStore((s) => s.hoveredHotspotId === hotspot.id);
@@ -15,6 +26,21 @@ export function HotspotMarker({ hotspot, position }: HotspotMarkerProps) {
   const currentHoverId = useExplorerStore((s) => s.hoveredHotspotId);
   const setHover = useExplorerStore((s) => s.hoverHotspot);
   const isWalking = useExplorerStore((s) => s.mode === 'walk');
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  // Written as a CSS var (not an inline transform) so the CSS pulse animation and
+  // hover/active transforms can multiply it in rather than being overwritten.
+  useFrame(({ camera }) => {
+    const button = buttonRef.current;
+    if (!button) return;
+    const distance = camera.position.distanceTo(position);
+    const scale = MathUtils.clamp(
+      MARKER_REFERENCE_DISTANCE / distance,
+      MARKER_MIN_SCALE,
+      MARKER_MAX_SCALE,
+    );
+    button.style.setProperty('--tse-marker-scale', scale.toFixed(3));
+  });
 
   return (
     <Html
@@ -42,6 +68,7 @@ export function HotspotMarker({ hotspot, position }: HotspotMarkerProps) {
       wrapperClass={isWalking ? 'tse-marker-wrapper-walk' : undefined}
     >
       <button
+        ref={buttonRef}
         type="button"
         className={[
           'tse-hotspot-marker',

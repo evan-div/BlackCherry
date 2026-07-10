@@ -10,6 +10,7 @@ interface HotspotCardProps {
    * — kept out of React state so camera movement never triggers a re-render here. */
   anchorRef: RefObject<HTMLDivElement | null>;
   onSelect?: (id: string | null) => void;
+  onCtaClick?: (hotspotId: string, ctaUrl: string) => void;
 }
 
 /**
@@ -18,7 +19,7 @@ interface HotspotCardProps {
  * .tse-bottom-sheet / the max-width:640px override in styles.css), since a
  * screen-projected card is awkward to hit-test and read on small screens.
  */
-export function HotspotCard({ hotspots, anchorRef, onSelect }: HotspotCardProps) {
+export function HotspotCard({ hotspots, anchorRef, onSelect, onCtaClick }: HotspotCardProps) {
   const activeId = useExplorerStore((s) => s.activeHotspotId);
   const selectHotspot = useExplorerStore((s) => s.selectHotspot);
   const isTouchOnly = useIsTouchOnly();
@@ -54,6 +55,7 @@ export function HotspotCard({ hotspots, anchorRef, onSelect }: HotspotCardProps)
           className="tse-btn tse-btn--accent"
           target="_blank"
           rel="noopener noreferrer"
+          onClick={() => onCtaClick?.(hotspot.id, hotspot.ctaUrl!)}
         >
           {hotspot.ctaLabel ?? 'Learn more'}
         </a>

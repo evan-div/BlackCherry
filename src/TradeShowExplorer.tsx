@@ -9,6 +9,7 @@ import './ui/styles.css';
 import { themeToCssVars } from './config/theme';
 import { placeholderHotspots, tradeShowHotspots } from './config/hotspots';
 import type { ExplorerProps } from './config/types';
+import { useAnalyticsEvents } from './hooks/useAnalyticsEvents';
 import { useDeactivationTriggers } from './hooks/useDeactivationTriggers';
 import { usePointerLockAvailable } from './hooks/usePointerLockAvailable';
 import { useWebglSupported } from './hooks/useWebglSupported';
@@ -57,10 +58,12 @@ function ExplorerInner({
   lazy: lazyMode = 'viewport',
   posterUrl,
   onHotspotSelect,
+  onAnalyticsEvent,
 }: ExplorerProps) {
   const resolvedHotspots = hotspots ?? (modelUrl ? tradeShowHotspots : placeholderHotspots);
   const rootRef = useRef<HTMLDivElement>(null);
   const cardAnchorRef = useRef<HTMLDivElement>(null);
+  const emitAnalytics = useAnalyticsEvents(onAnalyticsEvent);
   useDeactivationTriggers(rootRef);
   usePointerLockAvailable();
   const webglSupported = useWebglSupported();
@@ -98,6 +101,10 @@ function ExplorerInner({
     if (mode === 'walk' && !activeHotspotId) rootRef.current?.focus();
   }, [mode, activeHotspotId]);
 
+  const handleCtaClick = useCallback(
+    (hotspotId: string, ctaUrl: string) => emitAnalytics({ type: 'cta_clicked', hotspotId, ctaUrl }),
+    [emitAnalytics],
+  );
   const handleExitWalk = useCallback(() => requestModeChange('explore'), [requestModeChange]);
   const handleInteract = useCallback(() => {
     if (hoveredHotspotIdRef.current) selectHotspot(hoveredHotspotIdRef.current);
@@ -126,6 +133,27 @@ function ExplorerInner({
       setLoading({ active: false });
     }
   }, [modelUrl, shouldMountScene, setLoading]);
+
+  // Asset warmup. Without this the two big downloads are serialized: the GLB
+  // fetch can't begin until the three.js chunk has downloaded, parsed, and
+  // mounted the model component. A plain fetch() here just primes the HTTP
+  // cache, so the loader's own request later is a cache hit. Fired from two
+  // triggers: pointer-enter over the widget (a strong "about to engage" signal
+  // that can beat the viewport gate) and the scene actually being told to mount.
+  const warmedRef = useRef(false);
+  const warmAssets = useCallback(() => {
+    if (warmedRef.current) return;
+    warmedRef.current = true;
+    import('./scene/LazyScene');
+    if (modelUrl) {
+      fetch(modelUrl).catch(() => {
+        // Purely opportunistic — the real load path reports its own errors.
+      });
+    }
+  }, [modelUrl]);
+  useEffect(() => {
+    if (shouldMountScene) warmAssets();
+  }, [shouldMountScene, warmAssets]);
 
   const loadedSceneRef = useModelDisposal(modelUrl);
   const handleModelLoaded = useCallback(
@@ -169,6 +197,7 @@ function ExplorerInner({
       className="tse-root"
       style={{ ...themeToCssVars(theme), ...sizeStyle }}
       tabIndex={-1}
+      onPointerEnter={warmAssets}
     >
       <div className="tse-canvas-wrap">
         {shouldMountScene ? (
@@ -192,7 +221,12 @@ function ExplorerInner({
         )}
       </div>
       <Overlay hotspots={resolvedHotspots} />
-      <HotspotCard hotspots={resolvedHotspots} anchorRef={cardAnchorRef} onSelect={onHotspotSelect} />
+      <HotspotCard
+        hotspots={resolvedHotspots}
+        anchorRef={cardAnchorRef}
+        onSelect={onHotspotSelect}
+        onCtaClick={handleCtaClick}
+      />
       <ErrorScreen onRetry={handleRetry} />
     </div>
   );
