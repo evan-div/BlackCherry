@@ -25,6 +25,7 @@ export function CameraTransition() {
   const { camera, scene } = useThree();
   const mode = useExplorerStore((s) => s.mode);
   const setTransitioning = useExplorerStore((s) => s.setTransitioning);
+  const walkPose = useExplorerStore((s) => s.walkPose);
   const { camera: cameraDefaults, walk: walkDefaults } = useSceneConfig();
   const collision = useMemo(() => createCollisionWorld(scene, walkDefaults), [scene, walkDefaults]);
 
@@ -51,6 +52,13 @@ export function CameraTransition() {
       _euler.x = 0;
       _euler.z = 0;
       goalQuat.current.setFromEuler(_euler);
+      // Seed the minimap's pose with the spawn point now, so the "you are here"
+      // arrow is already correct the moment the map appears instead of sitting
+      // at a stale/default spot until WalkRig's first frame writes it.
+      walkPose.x = spawnX;
+      walkPose.z = spawnZ;
+      walkPose.yaw = _euler.y;
+      walkPose.hasPose = true;
     } else {
       goalPos.current.set(...cameraDefaults.position);
       _lookMatrix.lookAt(goalPos.current, new Vector3(...cameraDefaults.target), camera.up);
