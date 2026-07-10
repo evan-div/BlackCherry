@@ -18,8 +18,10 @@ interface HotspotsProps {
   isTouchOnly: boolean;
 }
 
-const CARD_WIDTH = 260;
-const CARD_MARGIN = 12;
+const CARD_WIDTH = 320;
+// Extra top margin the close button needs, since it overlaps the card's top-right
+// corner rather than sitting inside it (see .tse-hotspot-card__close).
+const CARD_MARGIN = 20;
 const LOOK_AT_MAX_DISTANCE = 15;
 // cos(~23deg) — a fairly tight "crosshair" cone so the nearest hotspot in view
 // doesn't steal the prompt from something the player is more precisely aiming at.

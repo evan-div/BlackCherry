@@ -42,11 +42,11 @@ export function HotspotCard({ hotspots, anchorRef, onSelect }: HotspotCardProps)
       <button type="button" className="tse-hotspot-card__close" aria-label="Close" onClick={close}>
         ×
       </button>
-      {hotspot.image && <img src={hotspot.image} alt="" />}
       {hotspot.category && <div className="tse-hotspot-card__category">{hotspot.category}</div>}
       <h3 id={`tse-hotspot-title-${hotspot.id}`} className="tse-hotspot-card__title">
         {hotspot.title}
       </h3>
+      {hotspot.image && <img src={hotspot.image} alt="" />}
       <p className="tse-hotspot-card__desc">{hotspot.description}</p>
       {hotspot.ctaUrl && (
         <a

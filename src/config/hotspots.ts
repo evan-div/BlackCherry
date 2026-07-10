@@ -75,6 +75,8 @@ export const tradeShowHotspots: Hotspot[] = [
       'The keynote stage with podium, ready for keynote speakers, panels, and product announcements.',
     category: 'stage',
     cameraView: { position: [6, 2.2, 10], distance: 6 },
+    ctaLabel: 'Check it out',
+    ctaUrl: '#',
   },
   {
     id: 'stage-backdrop',
@@ -84,6 +86,8 @@ export const tradeShowHotspots: Hotspot[] = [
       'A full-width curtain and screen backdrop frames the stage for maximum visual impact from every seat.',
     category: 'av',
     cameraView: { distance: 8 },
+    ctaLabel: 'Check it out',
+    ctaUrl: '#',
   },
   {
     id: 'banquet-seating',
@@ -93,6 +97,8 @@ export const tradeShowHotspots: Hotspot[] = [
       'Round-table seating for banquet dinners, awards ceremonies, and networking sessions between sessions.',
     category: 'furniture',
     cameraView: { position: [0, 12, 4], distance: 20 },
+    ctaLabel: 'Check it out',
+    ctaUrl: '#',
   },
   {
     id: 'exhibitor-tables',
@@ -102,6 +108,8 @@ export const tradeShowHotspots: Hotspot[] = [
       'Dedicated tables for sponsors and exhibiting partners to showcase their products alongside the main program.',
     category: 'product',
     cameraView: { position: [-33, 10, 0], distance: 18 },
+    ctaLabel: 'Check it out',
+    ctaUrl: '#',
   },
   {
     id: 'registration',
@@ -110,6 +118,8 @@ export const tradeShowHotspots: Hotspot[] = [
     description:
       'The registration desk and lobby area — the first impression attendees get when they arrive.',
     category: 'furniture',
+    ctaLabel: 'Check it out',
+    ctaUrl: '#',
   },
 ];
 

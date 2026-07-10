@@ -28,6 +28,7 @@ const _euler = new Euler(0, 0, 0, 'YXZ');
 export function WalkRig({ keysRef }: WalkRigProps) {
   const { camera, gl, scene, invalidate, events } = useThree();
   const pointerLockAvailable = useExplorerStore((s) => s.pointerLockAvailable);
+  const activeHotspotId = useExplorerStore((s) => s.activeHotspotId);
   const { walk: walkDefaults } = useSceneConfig();
   const collision = useMemo(() => createCollisionWorld(scene, walkDefaults), [scene, walkDefaults]);
 
@@ -35,6 +36,10 @@ export function WalkRig({ keysRef }: WalkRigProps) {
   const draggingRef = useRef(false);
   const yawRef = useRef(0);
   const pitchRef = useRef(0);
+  // Read inside the pointerdown listener below, which is set up once and doesn't
+  // re-subscribe on every hotspot-card open/close.
+  const activeHotspotIdRef = useRef(activeHotspotId);
+  activeHotspotIdRef.current = activeHotspotId;
 
   // Pick up wherever CameraTransition left the camera (position + facing).
   useEffect(() => {
@@ -42,6 +47,32 @@ export function WalkRig({ keysRef }: WalkRigProps) {
     yawRef.current = _euler.y;
     pitchRef.current = MathUtils.clamp(_euler.x, -PITCH_LIMIT, PITCH_LIMIT);
   }, [camera]);
+
+  // A hotspot card is a normal clickable UI panel (its CTA link, its close
+  // button) — the player needs their real cursor back to use it, not a mouse
+  // hidden/captured by pointer lock. Release the lock (and cancel any in-flight
+  // drag-look) the moment a card opens; re-acquire it when the card closes so
+  // walking resumes exactly where it left off, without an extra click. Closing
+  // the card is itself a user gesture, which satisfies pointer lock's activation
+  // requirement — but only on that transition, never on this component's own
+  // mount, where there's no such gesture to spend.
+  const prevActiveHotspotIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    const wasActive = prevActiveHotspotIdRef.current;
+    prevActiveHotspotIdRef.current = activeHotspotId;
+    const canvas = gl.domElement;
+    if (activeHotspotId) {
+      draggingRef.current = false;
+      if (document.pointerLockElement === canvas) document.exitPointerLock();
+    } else if (wasActive && pointerLockAvailable) {
+      try {
+        canvas.requestPointerLock()?.catch?.(() => {});
+      } catch {
+        // Some browsers throw synchronously instead of rejecting a promise —
+        // either way, drag-to-look is still available as a fallback.
+      }
+    }
+  }, [activeHotspotId, gl, pointerLockAvailable]);
 
   useEffect(() => {
     const canvas = gl.domElement;
@@ -66,6 +97,9 @@ export function WalkRig({ keysRef }: WalkRigProps) {
       if (lockedRef.current || draggingRef.current) applyLook(e.movementX, e.movementY);
     };
     const handlePointerDown = () => {
+      // A hotspot card is open and owns the cursor — don't hijack it back into
+      // drag-look just because the click landed on the canvas behind the card.
+      if (activeHotspotIdRef.current) return;
       // Always enable drag-to-look immediately — don't gate it behind pointer lock
       // "availability", since availability doesn't guarantee the request succeeds.
       draggingRef.current = true;
@@ -99,6 +133,11 @@ export function WalkRig({ keysRef }: WalkRigProps) {
   }, [gl, events, pointerLockAvailable, invalidate]);
 
   useFrame((state, dt) => {
+    // A hotspot card is open — freeze the player in place so they can read it
+    // and use its buttons instead of accidentally walking off while looking down
+    // to click something.
+    if (activeHotspotId) return;
+
     _euler.set(pitchRef.current, yawRef.current, 0, 'YXZ');
     camera.quaternion.setFromEuler(_euler);
 

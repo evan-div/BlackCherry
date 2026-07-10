@@ -12,7 +12,7 @@ export function HotspotMarker({ hotspot, position }: HotspotMarkerProps) {
   const isActive = useExplorerStore((s) => s.activeHotspotId === hotspot.id);
   const isHovered = useExplorerStore((s) => s.hoveredHotspotId === hotspot.id);
   const selectHotspot = useExplorerStore((s) => s.selectHotspot);
-  const hoverHotspot = useExplorerStore((s) => s.hoveredHotspotId);
+  const currentHoverId = useExplorerStore((s) => s.hoveredHotspotId);
   const setHover = useExplorerStore((s) => s.hoverHotspot);
   const isWalking = useExplorerStore((s) => s.mode === 'walk');
 
@@ -40,7 +40,13 @@ export function HotspotMarker({ hotspot, position }: HotspotMarkerProps) {
     >
       <button
         type="button"
-        className={`tse-hotspot-marker${isActive ? ' tse-hotspot-marker--active' : ''}`}
+        className={[
+          'tse-hotspot-marker',
+          isActive && 'tse-hotspot-marker--active',
+          isHovered && !isActive && 'tse-hotspot-marker--hovered',
+        ]
+          .filter(Boolean)
+          .join(' ')}
         aria-label={hotspot.title}
         aria-expanded={isActive}
         aria-hidden={isWalking}
@@ -51,12 +57,11 @@ export function HotspotMarker({ hotspot, position }: HotspotMarkerProps) {
         }}
         onPointerOver={() => setHover(hotspot.id)}
         onPointerOut={() => {
-          if (hoverHotspot === hotspot.id) setHover(null);
+          if (currentHoverId === hotspot.id) setHover(null);
         }}
-      />
-      {isHovered && !isActive && (
-        <div className="tse-hotspot-tooltip">{hotspot.title}</div>
-      )}
+      >
+        <span>More Details</span>
+      </button>
     </Html>
   );
 }
