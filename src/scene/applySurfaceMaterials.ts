@@ -49,6 +49,15 @@ const MAX_SHELL_HEIGHT = 20;
 const FLOOR_STEP_BAND: [number, number] = [0.25, 0.8];
 const GROUND_LEVEL_Y = 0;
 
+/** The same two floor pieces also leave a ~0.2 m gap in Z where they meet — the
+ * main-hall floor's front edge ends at z≈48.6 and the foyer floor's back edge
+ * starts at z≈48.8, so once they're coplanar you see straight through the hole
+ * between them. Vertices on the main-hall front edge (this Z band) are pushed
+ * just past the foyer edge, so the two coplanar pieces overlap by a hair instead
+ * of leaving a gap. World-planar UVs keep the concrete continuous across it. */
+const FLOOR_SEAM_EDGE_Z: [number, number] = [48.4, 48.75];
+const FLOOR_SEAM_TARGET_Z = 49;
+
 const _box = new Box3();
 const _size = new Vector3();
 const _center = new Vector3();
@@ -72,13 +81,14 @@ function bakePlanarFloorUV(mesh: Mesh): void {
   geometry.setAttribute('uv', new BufferAttribute(uv, 2));
 }
 
-/** Snaps floor vertices sitting in the FLOOR_STEP_BAND down to ground level, so a
- * mis-authored raised floor piece lines up with the rest of the floor (and stops
- * clipping through the furniture that rests at ground level). Operates in world
- * space then maps back through the mesh's inverse world matrix, so it's correct
- * regardless of the node's own transform. Only touches Y — XZ (and therefore the
- * planar UVs baked from XZ) are untouched. */
-function reconcileFloorLevel(mesh: Mesh): void {
+/** Reconciles the two mis-authored floor pieces so they read as one continuous
+ * floor: snaps the raised main-hall level down to ground (FLOOR_STEP_BAND → 0) so
+ * it lines up with the foyer and stops clipping its own furniture, and closes the
+ * ~0.2 m gap where the two pieces meet (FLOOR_SEAM_EDGE_Z → past the foyer edge).
+ * Operates in world space then maps back through the inverse world matrix, so it's
+ * correct regardless of the node's transform. Only Y and (at the seam) Z move; the
+ * planar UVs baked from world XZ stay continuous. */
+function reconcileFloorGeometry(mesh: Mesh): void {
   const geometry = mesh.geometry;
   const position = geometry.getAttribute('position');
   if (!position) return;
@@ -86,8 +96,16 @@ function reconcileFloorLevel(mesh: Mesh): void {
   let moved = 0;
   for (let i = 0; i < position.count; i++) {
     _v.fromBufferAttribute(position, i).applyMatrix4(mesh.matrixWorld);
+    let changed = false;
     if (_v.y > FLOOR_STEP_BAND[0] && _v.y < FLOOR_STEP_BAND[1]) {
       _v.y = GROUND_LEVEL_Y;
+      changed = true;
+    }
+    if (_v.z > FLOOR_SEAM_EDGE_Z[0] && _v.z < FLOOR_SEAM_EDGE_Z[1]) {
+      _v.z = FLOOR_SEAM_TARGET_Z;
+      changed = true;
+    }
+    if (changed) {
       _v.applyMatrix4(_inv);
       position.setXYZ(i, _v.x, _v.y, _v.z);
       moved++;
@@ -147,7 +165,7 @@ export function applySurfaceMaterials(scene: Object3D): void {
       envMapIntensity: 0.75,
     });
     for (const mesh of floors) {
-      reconcileFloorLevel(mesh);
+      reconcileFloorGeometry(mesh);
       bakePlanarFloorUV(mesh);
       mesh.material = floorMaterial;
       mesh.receiveShadow = true;
