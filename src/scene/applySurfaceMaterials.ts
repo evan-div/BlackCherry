@@ -1,6 +1,7 @@
 import {
   Box3,
   BufferAttribute,
+  Matrix4,
   Mesh,
   MeshStandardMaterial,
   Vector2,
@@ -34,11 +35,25 @@ const processed = new WeakSet<object>();
 
 /** Minimum XZ footprint (m²) to be considered architecture rather than furniture. */
 const ARCHITECTURE_FOOTPRINT = 2000;
+/** Above this height a huge-footprint mesh isn't a wall/shell — it's a merged
+ * mesh whose bounding box exploded during gltf-transform's `join` (e.g. all the
+ * round tablecloths welded into one 80–230 m-tall "mesh"). The real shell is ~11 m. */
+const MAX_SHELL_HEIGHT = 20;
+
+/** This export's main-hall floor piece was authored ~0.6 m above the foyer floor
+ * (and above its own furniture, which sits at ground level), so the two floor
+ * pieces don't line up and the raised piece clips up through its tables. Floor
+ * vertices whose world height falls in this band are snapped down to ground level
+ * to reconcile them. The stage platform (~0.9 m, with the podium/screen actually
+ * resting on it) sits above the band and is deliberately preserved. */
+const FLOOR_STEP_BAND: [number, number] = [0.25, 0.8];
+const GROUND_LEVEL_Y = 0;
 
 const _box = new Box3();
 const _size = new Vector3();
 const _center = new Vector3();
 const _v = new Vector3();
+const _inv = new Matrix4();
 
 /** Replaces a mesh's UVs with a world-space planar projection (XZ → UV) at the
  * concrete tile scale, so the floor tiles cleanly and at a correct physical size
@@ -55,6 +70,34 @@ function bakePlanarFloorUV(mesh: Mesh): void {
     uv[i * 2 + 1] = _v.z / CONCRETE_TILE_METERS;
   }
   geometry.setAttribute('uv', new BufferAttribute(uv, 2));
+}
+
+/** Snaps floor vertices sitting in the FLOOR_STEP_BAND down to ground level, so a
+ * mis-authored raised floor piece lines up with the rest of the floor (and stops
+ * clipping through the furniture that rests at ground level). Operates in world
+ * space then maps back through the mesh's inverse world matrix, so it's correct
+ * regardless of the node's own transform. Only touches Y — XZ (and therefore the
+ * planar UVs baked from XZ) are untouched. */
+function reconcileFloorLevel(mesh: Mesh): void {
+  const geometry = mesh.geometry;
+  const position = geometry.getAttribute('position');
+  if (!position) return;
+  _inv.copy(mesh.matrixWorld).invert();
+  let moved = 0;
+  for (let i = 0; i < position.count; i++) {
+    _v.fromBufferAttribute(position, i).applyMatrix4(mesh.matrixWorld);
+    if (_v.y > FLOOR_STEP_BAND[0] && _v.y < FLOOR_STEP_BAND[1]) {
+      _v.y = GROUND_LEVEL_Y;
+      _v.applyMatrix4(_inv);
+      position.setXYZ(i, _v.x, _v.y, _v.z);
+      moved++;
+    }
+  }
+  if (moved > 0) {
+    position.needsUpdate = true;
+    geometry.computeBoundingBox();
+    geometry.computeBoundingSphere();
+  }
 }
 
 export function applySurfaceMaterials(scene: Object3D): void {
@@ -84,7 +127,7 @@ export function applySurfaceMaterials(scene: Object3D): void {
 
     if (_size.y < 2.5 && _center.y < 4) {
       floors.push(obj);
-    } else if (_size.y > 5) {
+    } else if (_size.y > 5 && _size.y < MAX_SHELL_HEIGHT) {
       walls.push(obj);
     }
   });
@@ -104,6 +147,7 @@ export function applySurfaceMaterials(scene: Object3D): void {
       envMapIntensity: 0.75,
     });
     for (const mesh of floors) {
+      reconcileFloorLevel(mesh);
       bakePlanarFloorUV(mesh);
       mesh.material = floorMaterial;
       mesh.receiveShadow = true;
