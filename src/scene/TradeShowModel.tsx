@@ -3,6 +3,7 @@ import { useGLTF } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
 import { Mesh } from 'three';
 import { configureGltfLoader } from '../loaders/gltf';
+import { applySurfaceMaterials } from './applySurfaceMaterials';
 
 interface TradeShowModelProps {
   url: string;
@@ -23,6 +24,12 @@ export function TradeShowModel({ url, decoderPath, ktx2Path, onLoaded }: TradeSh
   const { scene } = useGLTF(url, false, false, extend);
 
   useEffect(() => {
+    // Re-skin the big architectural surfaces (floor → polished concrete, shell →
+    // plaster) before freezing matrices below — it reads world matrices and bakes
+    // world-space floor UVs, so it must run while matrices are still live. Idempotent
+    // across remounts (see applySurfaceMaterials).
+    applySurfaceMaterials(scene);
+
     scene.traverse((obj) => {
       if (obj.name.startsWith('COLLISION')) {
         obj.visible = false;
