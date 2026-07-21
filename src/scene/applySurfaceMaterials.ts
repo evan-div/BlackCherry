@@ -42,6 +42,15 @@ const ARCHITECTURE_FOOTPRINT = 2000;
  * round tablecloths welded into one 80–230 m-tall "mesh"). The real shell is ~11 m. */
 const MAX_SHELL_HEIGHT = 20;
 
+/** Freestanding wall panels (backdrops, partitions) are separate meshes that the
+ * footprint test misses: being thin in one horizontal axis, their XZ footprint is
+ * tiny even when the vertical face is large. Catch them by shape instead — a tall,
+ * wide, but thin slab. The thickness floor excludes flat screens/banners/signage
+ * (≈0 thickness) and the black pipe-and-drape, which shouldn't become concrete. */
+const MIN_PANEL_HEIGHT = 3.5;
+const MIN_PANEL_FACE = 6;
+const PANEL_THICKNESS: [number, number] = [0.3, 2];
+
 /** This export's main-hall floor piece was authored ~0.6 m above the foyer floor
  * (and above its own furniture, which sits at ground level), so the two floor
  * pieces don't line up and the raised piece clips up through its tables. Floor
@@ -143,11 +152,26 @@ export function applySurfaceMaterials(scene: Object3D): void {
     _box.getCenter(_center);
 
     const footprint = _size.x * _size.z;
-    if (footprint < ARCHITECTURE_FOOTPRINT) return;
-
-    if (_size.y < 2.5 && _center.y < 4) {
-      floors.push(obj);
-    } else if (_size.y > 5 && _size.y < MAX_SHELL_HEIGHT) {
+    if (footprint >= ARCHITECTURE_FOOTPRINT) {
+      // Floor or enclosing shell — identified by a large horizontal footprint.
+      if (_size.y < 2.5 && _center.y < 4) {
+        floors.push(obj);
+      } else if (_size.y > 5 && _size.y < MAX_SHELL_HEIGHT) {
+        walls.push(obj);
+      }
+      return;
+    }
+    // Freestanding wall panel — small footprint (it's thin), but a tall, wide,
+    // slab-shaped vertical face. Thickness is the thinner horizontal dimension.
+    const faceMax = Math.max(_size.x, _size.z);
+    const thickness = Math.min(_size.x, _size.z);
+    if (
+      _size.y > MIN_PANEL_HEIGHT &&
+      _size.y < MAX_SHELL_HEIGHT &&
+      faceMax > MIN_PANEL_FACE &&
+      thickness > PANEL_THICKNESS[0] &&
+      thickness < PANEL_THICKNESS[1]
+    ) {
       walls.push(obj);
     }
   });
