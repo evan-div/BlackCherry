@@ -18,6 +18,12 @@ import type { Texture } from 'three';
  * believable ~4 m slab grid. */
 export const CONCRETE_TILE_METERS = 4;
 
+/** World meters per wall texture tile. The wall shell is textured by world-space
+ * triplanar projection (no UVs), so this sets the physical size of the board-formed
+ * concrete pattern — board seams land every tile/BOARDS_PER_TILE meters of height. */
+export const WALL_TILE_METERS = 2.4;
+const BOARDS_PER_TILE = 8; // ~0.3 m form boards
+
 const TEX_SIZE = 512;
 
 export interface SurfaceTextures {
@@ -181,37 +187,61 @@ export function createConcreteTextures(): SurfaceTextures {
 }
 
 /**
- * Wall/shell texture: a low-contrast neutral plaster. Deliberately subtle — the
- * shell is applied through the model's authored UVs (whose scale we can't know
- * ahead of time), and low contrast means any tiling seams or UV oddities stay
- * invisible, while still killing the flat single-color look.
+ * Wall/shell texture: board-formed concrete — the imprint of the timber form
+ * boards a concrete wall was poured against (horizontal seams every ~0.3 m, each
+ * board a slightly different tone, with a faint along-grain streak). It pairs with
+ * the polished-concrete floor the way it does in real modern architecture: same
+ * material family, but matte and textured where the floor is smooth and reflective.
+ *
+ * Applied by world-space triplanar projection (see applySurfaceMaterials), not
+ * authored UVs — the V axis maps to world height, so the board seams sit at
+ * consistent, believable heights across every wall regardless of its facing.
  */
 export function createWallTexture(): SurfaceTextures {
   const n = TEX_SIZE * TEX_SIZE;
   const color = new Uint8ClampedArray(n * 4);
-  const mottle = tileNoise(6, 555);
-  const grain = tileNoise(48, 88);
+  const mottle = tileNoise(5, 555);
+  const grain = tileNoise(40, 88);
+  // Fine, horizontally-stretched noise for the wood grain that runs along each board.
+  const streak = tileNoise(80, 314);
 
-  const baseR = 176;
-  const baseG = 173;
-  const baseB = 167;
+  const baseR = 168;
+  const baseG = 163;
+  const baseB = 154;
+
+  // Per-board tone offsets — real board-formed concrete has each board cure to a
+  // slightly different shade, which is most of what makes the pattern read.
+  const toneRnd = mulberry32(4242);
+  const boardTone: number[] = [];
+  for (let b = 0; b < BOARDS_PER_TILE; b++) boardTone.push((toneRnd() - 0.5) * 22);
 
   for (let y = 0; y < TEX_SIZE; y++) {
     for (let x = 0; x < TEX_SIZE; x++) {
       const i = y * TEX_SIZE + x;
       const u = x / TEX_SIZE;
       const v = y / TEX_SIZE;
+
+      const boardF = v * BOARDS_PER_TILE;
+      const board = Math.floor(boardF) % BOARDS_PER_TILE;
+      const withinBoard = boardF - Math.floor(boardF); // 0..1 up each board
+
+      // Recessed seam grooves at each board boundary (soft falloff to top & bottom).
+      const seamDist = Math.min(withinBoard, 1 - withinBoard);
+      const seam = seamDist < 0.06 ? (1 - seamDist / 0.06) : 0;
+
       const m = mottle(u, v) - 0.5;
       const g = grain(u, v) - 0.5;
-      const bright = m * 12 + g * 6;
+      // Grain streak sampled so it's smeared horizontally (along the board).
+      const s = streak(u * 0.15, v) - 0.5;
+
+      const bright = boardTone[board] + m * 12 + g * 5 + s * 7 - seam * 34;
+
       color[i * 4] = baseR + bright;
       color[i * 4 + 1] = baseG + bright;
-      color[i * 4 + 2] = baseB + bright;
+      color[i * 4 + 2] = baseB + bright * 0.96;
       color[i * 4 + 3] = 255;
     }
   }
 
-  const map = makeTexture(color, true);
-  map.repeat.set(6, 6);
-  return { map };
+  return { map: makeTexture(color, true) };
 }

@@ -10,9 +10,11 @@ import {
 import type { Object3D } from 'three';
 import {
   CONCRETE_TILE_METERS,
+  WALL_TILE_METERS,
   createConcreteTextures,
   createWallTexture,
 } from './proceduralTextures';
+import type { WebGLProgramParametersWithUniforms } from 'three';
 
 /**
  * Upgrades the big flat surfaces of a loaded model — the floor and the wall/ceiling
@@ -180,8 +182,52 @@ export function applySurfaceMaterials(scene: Object3D): void {
       roughness: 0.82,
       envMapIntensity: 0.3,
     });
+    makeTriplanar(wallMaterial, 1 / WALL_TILE_METERS);
     for (const mesh of walls) {
+      // Triplanar blends by the surface normal; a shell exported without normals
+      // would otherwise sample to black. Recompute them if they're missing.
+      if (!mesh.geometry.getAttribute('normal')) mesh.geometry.computeVertexNormals();
       mesh.material = wallMaterial;
     }
   }
+}
+
+/**
+ * Reworks a MeshStandardMaterial to sample its `map` by world-space triplanar
+ * projection instead of UVs: the texture is projected down each of the three world
+ * axes and the results blended by the surface normal, so every face gets correctly-
+ * oriented, correctly-scaled texture no matter which way it points or whether the
+ * mesh has usable UVs at all. This is why the wall shell — which ships with no
+ * useful UVs and would otherwise render as one flat colour — actually shows its
+ * board-formed texture. Only the colour map is triplanar-sampled; lighting/shadow/
+ * env terms are left to the stock shader.
+ */
+function makeTriplanar(material: MeshStandardMaterial, scale: number): void {
+  material.onBeforeCompile = (shader: WebGLProgramParametersWithUniforms) => {
+    shader.uniforms.triScale = { value: scale };
+    shader.vertexShader =
+      'varying vec3 vTriWorldPos;\nvarying vec3 vTriWorldNormal;\n' +
+      shader.vertexShader.replace(
+        '#include <begin_vertex>',
+        `#include <begin_vertex>
+        vTriWorldPos = (modelMatrix * vec4(transformed, 1.0)).xyz;
+        vTriWorldNormal = normalize(mat3(modelMatrix) * objectNormal);`,
+      );
+    shader.fragmentShader =
+      'varying vec3 vTriWorldPos;\nvarying vec3 vTriWorldNormal;\nuniform float triScale;\n' +
+      shader.fragmentShader.replace(
+        '#include <map_fragment>',
+        `#ifdef USE_MAP
+          vec3 triBlend = abs(vTriWorldNormal);
+          triBlend /= (triBlend.x + triBlend.y + triBlend.z + 1e-5);
+          vec4 triColor =
+            texture2D(map, vTriWorldPos.zy * triScale) * triBlend.x +
+            texture2D(map, vTriWorldPos.xz * triScale) * triBlend.y +
+            texture2D(map, vTriWorldPos.xy * triScale) * triBlend.z;
+          diffuseColor *= triColor;
+        #endif`,
+      );
+  };
+  // Distinguish this material's compiled program from a stock one in three's cache.
+  material.customProgramCacheKey = () => 'triplanar-map';
 }
