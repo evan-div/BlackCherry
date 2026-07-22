@@ -412,7 +412,7 @@
  * (which overhangs the top-right corner) stays fully visible. */
 .tse-hotspot-card--walk {
   top: 50%;
-  left: 20px;
+  left: 0;
   right: auto;
   transform: translateY(-50%);
 }
