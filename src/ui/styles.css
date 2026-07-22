@@ -405,15 +405,15 @@
   text-transform: uppercase;
 }
 
-/* Walk mode: pin the card to the middle-left of the viewport rather than
+/* Walk mode: pin the card to the middle-right of the viewport rather than
  * projecting it onto the hotspot's screen position (the projector clears its
  * inline transform for this mode — see hotspots/Hotspots.tsx). Vertically
- * centered against the left edge. No overflow clipping, so the close button
+ * centered, inset from the right edge. No overflow clipping, so the close button
  * (which overhangs the top-right corner) stays fully visible. */
 .tse-hotspot-card--walk {
   top: 50%;
-  left: 0;
-  right: auto;
+  right: 20px;
+  left: auto;
   transform: translateY(-50%);
 }
 .tse-hotspot-card__category {
