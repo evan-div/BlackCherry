@@ -116,9 +116,18 @@ export function Hotspots({ hotspots, ready, cardAnchorRef, isTouchOnly }: Hotspo
       hoverHotspot(null);
     }
 
-    // The bottom sheet on touch devices is positioned entirely by CSS; skip writing
-    // an inline transform that would fight with it.
-    if (isTouchOnly) return;
+    // The bottom sheet on touch devices, and the fixed middle-left card in walk
+    // mode, are both positioned entirely by CSS — skip writing an inline transform
+    // that would fight it. Clear any transform/display left over from a previous
+    // explore-mode projection so the CSS placement actually takes effect.
+    if (isTouchOnly || mode === 'walk') {
+      const card = cardAnchorRef.current;
+      if (card) {
+        card.style.transform = '';
+        card.style.display = '';
+      }
+      return;
+    }
     const el = cardAnchorRef.current;
     if (!el) return;
     const id = activeHotspotId;

@@ -22,6 +22,7 @@ interface HotspotCardProps {
 export function HotspotCard({ hotspots, anchorRef, onSelect, onCtaClick }: HotspotCardProps) {
   const activeId = useExplorerStore((s) => s.activeHotspotId);
   const selectHotspot = useExplorerStore((s) => s.selectHotspot);
+  const isWalking = useExplorerStore((s) => s.mode === 'walk');
   const isTouchOnly = useIsTouchOnly();
   const hotspot = hotspots.find((h) => h.id === activeId) ?? null;
 
@@ -33,10 +34,20 @@ export function HotspotCard({ hotspots, anchorRef, onSelect, onCtaClick }: Hotsp
 
   if (!hotspot) return null;
 
+  const className = [
+    'tse-hotspot-card',
+    // Touch devices get the bottom sheet; walk mode pins the card to the middle-left
+    // of the viewport (see styles.css) instead of projecting it onto the hotspot.
+    isTouchOnly ? 'tse-bottom-sheet' : '',
+    isWalking && !isTouchOnly ? 'tse-hotspot-card--walk' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
   return (
     <div
       ref={anchorRef}
-      className={isTouchOnly ? 'tse-hotspot-card tse-bottom-sheet' : 'tse-hotspot-card'}
+      className={className}
       role="dialog"
       aria-labelledby={`tse-hotspot-title-${hotspot.id}`}
     >
@@ -47,7 +58,20 @@ export function HotspotCard({ hotspots, anchorRef, onSelect, onCtaClick }: Hotsp
       <h3 id={`tse-hotspot-title-${hotspot.id}`} className="tse-hotspot-card__title">
         {hotspot.title}
       </h3>
-      {hotspot.image && <img src={hotspot.image} alt="" />}
+      {/* Always render a photo area: the real image when one is configured, otherwise
+       * a labelled placeholder so it's clear a real-life photo belongs here. */}
+      {hotspot.image ? (
+        <img src={hotspot.image} alt="" />
+      ) : (
+        <div className="tse-hotspot-card__photo-placeholder" aria-hidden="true">
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+            <rect x="3" y="4" width="18" height="16" rx="2" />
+            <circle cx="8.5" cy="9.5" r="1.6" />
+            <path d="M4 17l4.5-4.5 3.5 3.5 3-3L20 16" />
+          </svg>
+          <span>Photo coming soon</span>
+        </div>
+      )}
       <p className="tse-hotspot-card__desc">{hotspot.description}</p>
       {hotspot.ctaUrl && (
         <a
