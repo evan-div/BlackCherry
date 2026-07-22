@@ -212,6 +212,12 @@ export function applySurfaceMaterials(scene: Object3D): void {
       // would otherwise sample to black. Recompute them if they're missing.
       if (!mesh.geometry.getAttribute('normal')) mesh.geometry.computeVertexNormals();
       mesh.material = wallMaterial;
+      // The enclosing shell (walls + roof) otherwise casts a shadow across the
+      // whole interior floor under the single overhead directional light — a real
+      // venue is lit from inside, so the building envelope shouldn't self-shadow.
+      // TradeShowModel reads this flag when it assigns shadow flags (furniture and
+      // the stage still cast their own local shadows for depth).
+      mesh.userData.tseNoCastShadow = true;
     }
   }
 }

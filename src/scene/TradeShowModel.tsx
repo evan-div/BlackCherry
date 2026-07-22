@@ -35,7 +35,10 @@ export function TradeShowModel({ url, decoderPath, ktx2Path, onLoaded }: TradeSh
         obj.visible = false;
       }
       if (obj instanceof Mesh) {
-        obj.castShadow = true;
+        // applySurfaceMaterials tags the building shell/walls so they don't cast
+        // the floor-wide shadow the overhead light would otherwise throw off the
+        // envelope; everything else casts normally.
+        obj.castShadow = obj.userData.tseNoCastShadow !== true;
         obj.receiveShadow = true;
       }
       obj.matrixAutoUpdate = false;
