@@ -21,7 +21,20 @@ export function DemoApp() {
 
       <section className="demo-explorer-section">
         <h2>Explore the Show Floor</h2>
-        <TradeShowExplorer aspect={16 / 9} modelUrl="/models/trade-show.glb" />
+        <TradeShowExplorer
+          aspect={16 / 9}
+          modelUrl="/models/trade-show.glb"
+          deepLink
+          onLeadSubmit={(lead) => {
+            // Demo stand-in for a real CRM/webhook call.
+            // eslint-disable-next-line no-console
+            console.log('[demo] lead submitted', lead);
+          }}
+          onAnalyticsEvent={(e) => {
+            // eslint-disable-next-line no-console
+            console.log('[demo] analytics', e);
+          }}
+        />
       </section>
 
       <section className="demo-filler">

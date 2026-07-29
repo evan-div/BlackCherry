@@ -1,8 +1,9 @@
 import { useEffect } from 'react';
 import type { RefObject } from 'react';
-import type { Hotspot } from '../config/types';
+import type { Hotspot, HotspotLead } from '../config/types';
 import { useExplorerStore } from '../state/store';
 import { useIsTouchOnly } from '../hooks/useIsTouchOnly';
+import { LeadForm } from './LeadForm';
 
 interface HotspotCardProps {
   hotspots: Hotspot[];
@@ -11,6 +12,9 @@ interface HotspotCardProps {
   anchorRef: RefObject<HTMLDivElement | null>;
   onSelect?: (id: string | null) => void;
   onCtaClick?: (hotspotId: string, ctaUrl: string) => void;
+  /** Present only when the host wired `onLeadSubmit`; enables the inline lead form
+   * for hotspots flagged `leadCapture`. */
+  onLeadSubmit?: (lead: HotspotLead) => void | Promise<void>;
 }
 
 /**
@@ -19,7 +23,7 @@ interface HotspotCardProps {
  * .tse-bottom-sheet / the max-width:640px override in styles.css), since a
  * screen-projected card is awkward to hit-test and read on small screens.
  */
-export function HotspotCard({ hotspots, anchorRef, onSelect, onCtaClick }: HotspotCardProps) {
+export function HotspotCard({ hotspots, anchorRef, onSelect, onCtaClick, onLeadSubmit }: HotspotCardProps) {
   const activeId = useExplorerStore((s) => s.activeHotspotId);
   const selectHotspot = useExplorerStore((s) => s.selectHotspot);
   const isWalking = useExplorerStore((s) => s.mode === 'walk');
@@ -73,16 +77,25 @@ export function HotspotCard({ hotspots, anchorRef, onSelect, onCtaClick }: Hotsp
         </div>
       )}
       <p className="tse-hotspot-card__desc">{hotspot.description}</p>
-      {hotspot.ctaUrl && (
-        <a
-          href={hotspot.ctaUrl}
-          className="tse-btn tse-btn--accent"
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={() => onCtaClick?.(hotspot.id, hotspot.ctaUrl!)}
-        >
-          {hotspot.ctaLabel ?? 'Learn more'}
-        </a>
+      {hotspot.leadCapture && onLeadSubmit ? (
+        <LeadForm
+          key={hotspot.id}
+          hotspotId={hotspot.id}
+          label={hotspot.ctaLabel ?? 'Request a quote'}
+          onSubmit={onLeadSubmit}
+        />
+      ) : (
+        hotspot.ctaUrl && (
+          <a
+            href={hotspot.ctaUrl}
+            className="tse-btn tse-btn--accent"
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => onCtaClick?.(hotspot.id, hotspot.ctaUrl!)}
+          >
+            {hotspot.ctaLabel ?? 'Learn more'}
+          </a>
+        )
       )}
     </div>
   );

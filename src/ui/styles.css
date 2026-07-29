@@ -179,17 +179,25 @@
 
 .tse-activation-badge {
   display: inline-flex;
+  flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 10px 18px;
-  border-radius: 999px;
+  gap: 3px;
+  padding: 12px 22px;
+  border-radius: 18px;
   background: rgba(12, 13, 17, 0.78);
   color: #fff;
-  font-size: 13px;
-  font-weight: 500;
   letter-spacing: 0.02em;
   backdrop-filter: blur(6px);
   transition: transform 0.15s ease, background-color 0.15s ease;
+}
+.tse-activation-badge__main {
+  font-size: 14px;
+  font-weight: 600;
+}
+.tse-activation-badge__hint {
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0.72;
 }
 .tse-activation-shield:hover .tse-activation-badge {
   background: rgba(12, 13, 17, 0.92);
@@ -463,6 +471,52 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+}
+
+/* ---------- Lead-capture form (inside the hotspot card) ---------- */
+
+.tse-lead-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tse-lead-form__input {
+  width: 100%;
+  font-family: inherit;
+  font-size: 13px;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.tse-lead-form__input::placeholder {
+  color: rgba(255, 255, 255, 0.45);
+}
+.tse-lead-form__input:focus-visible {
+  outline: 2px solid var(--tse-accent, #c8102e);
+  outline-offset: 1px;
+  border-color: transparent;
+}
+.tse-lead-form__textarea {
+  resize: vertical;
+  min-height: 40px;
+}
+.tse-lead-form__error {
+  font-size: 12px;
+  color: #ff9aa6;
+}
+.tse-lead-form__done {
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+.tse-lead-form .tse-btn--accent {
+  margin-top: 2px;
 }
 
 .tse-bottom-sheet {

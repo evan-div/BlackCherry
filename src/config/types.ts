@@ -36,8 +36,22 @@ export interface Hotspot {
   image?: string;
   ctaUrl?: string;
   ctaLabel?: string;
+  /** When true, the card's CTA opens an inline lead-capture form (name/email/
+   * message) instead of linking out — routed to the host's `onLeadSubmit`. The
+   * button label still comes from `ctaLabel` (default "Request a quote"). Requires
+   * `onLeadSubmit` to be wired, otherwise it falls back to the link CTA. */
+  leadCapture?: boolean;
   category?: HotspotCategory;
   cameraView?: HotspotCameraView;
+}
+
+/** A lead captured from a hotspot's inline CTA form, handed to the host's
+ * `onLeadSubmit` to route into their CRM / webhook / email. */
+export interface HotspotLead {
+  hotspotId: string;
+  name: string;
+  email: string;
+  message?: string;
 }
 
 export interface ExplorerTheme {
@@ -63,6 +77,7 @@ export type ExplorerAnalyticsEvent =
   | { type: 'hotspot_opened'; hotspotId: string }
   | { type: 'hotspot_closed'; hotspotId: string }
   | { type: 'cta_clicked'; hotspotId: string; ctaUrl: string }
+  | { type: 'lead_submitted'; hotspotId: string }
   | { type: 'tour_started' }
   | { type: 'tour_ended'; reason: 'completed' | 'user_input' | 'stopped' };
 
@@ -113,4 +128,15 @@ export interface ExplorerProps {
   /** Fired on discrete user interactions (hotspot opened, CTA clicked, mode
    * switched…) so the host page can forward them to its analytics stack. */
   onAnalyticsEvent?: (event: ExplorerAnalyticsEvent) => void;
+  /** Receives leads captured from hotspots flagged `leadCapture` — route to your
+   * CRM/webhook. Return a promise to keep the form in its submitting state until
+   * it resolves; throw/reject to surface an error and let the user retry. */
+  onLeadSubmit?: (lead: HotspotLead) => void | Promise<void>;
+  /** Opt-in shareable deep-links. When true, the explorer reads `?tse_hotspot=<id>`
+   * and `?tse_mode=walk` from the page URL on load (auto-activating and opening that
+   * hotspot / entering walk mode), and keeps those params in sync as the user
+   * navigates — so a copied URL reopens the same view. Namespaced params, written
+   * via replaceState. Use on a SINGLE explorer per page (multiple instances would
+   * fight over the shared URL); off by default. */
+  deepLink?: boolean;
 }

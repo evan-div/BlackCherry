@@ -18,7 +18,14 @@ export function ActivationShield() {
   return (
     <button type="button" className="tse-activation-shield" onClick={activate}>
       <span className="tse-activation-badge">
-        {isTouchOnly ? 'Tap to explore' : 'Click and drag to explore'}
+        <span className="tse-activation-badge__main">
+          {isTouchOnly ? 'Tap to explore' : 'Click to explore'}
+        </span>
+        <span className="tse-activation-badge__hint">
+          {isTouchOnly
+            ? 'Drag to look around the venue'
+            : 'Orbit the venue · then enter Walk mode to step inside'}
+        </span>
       </span>
     </button>
   );

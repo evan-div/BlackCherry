@@ -12,6 +12,8 @@ import { placeholderHotspots, tradeShowHotspots } from './config/hotspots';
 import type { ExplorerProps } from './config/types';
 import { useAnalyticsEvents } from './hooks/useAnalyticsEvents';
 import { useDeactivationTriggers } from './hooks/useDeactivationTriggers';
+import { useDeepLink, readDeepLinkIntent } from './hooks/useDeepLink';
+import type { DeepLinkIntent } from './hooks/useDeepLink';
 import { useGuidedTour } from './hooks/useGuidedTour';
 import { usePointerLockAvailable } from './hooks/usePointerLockAvailable';
 import { useWebglSupported } from './hooks/useWebglSupported';
@@ -37,14 +39,18 @@ const LazyScene = lazy(() => import('./scene/LazyScene'));
  */
 export function TradeShowExplorer(props: ExplorerProps) {
   const isTouchOnly = useIsTouchOnly();
-  // Walk mode has no supported input scheme on touch-only devices (see
-  // ModeToggle/WalkInstructions) — never honor a defaultMode="walk" there.
-  const [store] = useState(() =>
-    createExplorerStore(!isTouchOnly && props.defaultMode === 'walk' ? 'walk' : 'explore'),
+  // Read any shareable-link intent once, up front, so the store can start in the
+  // requested mode (and so it's captured before the URL-sync effect rewrites it).
+  const [deepLinkIntent] = useState<DeepLinkIntent | null>(() =>
+    props.deepLink ? readDeepLinkIntent() : null,
   );
+  // Walk mode has no supported input scheme on touch-only devices (see
+  // ModeToggle/WalkInstructions) — never honor a walk request there.
+  const wantWalk = props.defaultMode === 'walk' || deepLinkIntent?.mode === 'walk';
+  const [store] = useState(() => createExplorerStore(!isTouchOnly && wantWalk ? 'walk' : 'explore'));
   return (
     <ExplorerStoreContext.Provider value={store}>
-      <ExplorerInner {...props} />
+      <ExplorerInner {...props} deepLinkIntent={deepLinkIntent} />
     </ExplorerStoreContext.Provider>
   );
 }
@@ -61,11 +67,15 @@ function ExplorerInner({
   posterUrl,
   onHotspotSelect,
   onAnalyticsEvent,
-}: ExplorerProps) {
+  onLeadSubmit,
+  deepLink = false,
+  deepLinkIntent,
+}: ExplorerProps & { deepLinkIntent: DeepLinkIntent | null }) {
   const resolvedHotspots = hotspots ?? (modelUrl ? tradeShowHotspots : placeholderHotspots);
   const rootRef = useRef<HTMLDivElement>(null);
   const cardAnchorRef = useRef<HTMLDivElement>(null);
   const emitAnalytics = useAnalyticsEvents(onAnalyticsEvent);
+  useDeepLink(deepLink, deepLinkIntent, resolvedHotspots);
   useDeactivationTriggers(rootRef);
   usePointerLockAvailable();
   const webglSupported = useWebglSupported();
@@ -106,6 +116,15 @@ function ExplorerInner({
   const handleCtaClick = useCallback(
     (hotspotId: string, ctaUrl: string) => emitAnalytics({ type: 'cta_clicked', hotspotId, ctaUrl }),
     [emitAnalytics],
+  );
+  const handleLeadSubmit = useCallback(
+    async (lead: Parameters<NonNullable<typeof onLeadSubmit>>[0]) => {
+      // Await the host first so a rejection propagates to the form (error + retry)
+      // and analytics only records genuinely captured leads.
+      await onLeadSubmit?.(lead);
+      emitAnalytics({ type: 'lead_submitted', hotspotId: lead.hotspotId });
+    },
+    [onLeadSubmit, emitAnalytics],
   );
   const { tourActive, startTour, stopTour } = useGuidedTour(rootRef, resolvedHotspots, emitAnalytics);
   const handleTourStop = useCallback(() => stopTour('stopped'), [stopTour]);
@@ -234,6 +253,7 @@ function ExplorerInner({
         anchorRef={cardAnchorRef}
         onSelect={onHotspotSelect}
         onCtaClick={handleCtaClick}
+        onLeadSubmit={onLeadSubmit ? handleLeadSubmit : undefined}
       />
       <ErrorScreen onRetry={handleRetry} />
     </div>

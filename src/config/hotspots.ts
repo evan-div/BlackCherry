@@ -127,8 +127,10 @@ export const tradeShowHotspots: Hotspot[] = [
     description:
       'The registration desk and lobby area — the first impression attendees get when they arrive.',
     category: 'furniture',
-    ctaLabel: 'Check it out',
-    ctaUrl: '#',
+    // Demonstrates the inline lead form: with `onLeadSubmit` wired, this CTA
+    // collects a name/email instead of linking out.
+    leadCapture: true,
+    ctaLabel: 'Request a quote',
   },
 ];
 
