@@ -54,14 +54,13 @@ export const TRADE_SHOW_WALK: WalkDefaults = {
   speed: 3.5,
   sprintMultiplier: 2.5,
   radius: 0.35,
-  // Trimmed just inside the VISIBLE floor (X:[-31,21] Z:[-9,53]). This deliberately
-  // does NOT match the authored COLLISION_Floor, which is ~100x121m — sized to an
-  // earlier, larger layout and extending ~52m past where the visible venue ends.
-  // Until that proxy is rebuilt, this clamp is what stops a walker strolling off
-  // the end of the building onto invisible floor.
+  // Trimmed just inside the authored COLLISION_Floor (X:[-29.5,20.8] Z:[-8.3,52.6]),
+  // which now matches the visible venue. With COLLISION_Walls present, walk mode
+  // raycasts against those proxies for real blocking; this box is only the outer
+  // backstop for anywhere a ray misses.
   bounds: {
-    min: [-29, -7],
-    max: [19, 51],
+    min: [-29, -8],
+    max: [20, 52],
   },
 };
 
