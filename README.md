@@ -136,15 +136,22 @@ until the file exists.
   automatically. Without them, walk mode raycasts the full visible geometry.
 - Export: glTF Binary (.glb), +Y up, apply modifiers on, punctual lights + cameras
   off (the app supplies its own lighting and reads the `CAMERA_*` empties instead).
+- Bake lighting to an **emissive** lightmap over a **black** `baseColorFactor` (see
+  the baking section below). That makes the surface render exactly as baked and
+  fully independent of the app's runtime lights — no double-lighting, no fighting.
+  The app detects these by the `BAKED_` material-name prefix and skips them when
+  assigning shadow casting, since their shadows are already in the bake.
 - Compress with [gltf-transform](https://gltf-transform.dev/) rather than Blender's
   built-in Draco export, so the pipeline is re-runnable:
   ```bash
-  npm run optimize-model   # Draco-compresses public/models/trade-show.glb in place
+  npm run optimize-model   # webp + Draco on public/models/trade-show.glb, in place
   ```
-  Heads-up: the optimizer's `join` step merges meshes that share a material and
-  destroys per-object names in the process — keep `HS_*`, `CAMERA_*`, and
-  `COLLISION*` prefixes intact by checking the output in a viewer, and prefer
-  giving collision proxies their own material so they never merge with visuals.
+  **Do not use `gltf-transform optimize`.** Its `flatten`/`join`/`prune` steps
+  delete exactly the things the app relies on: `join` merges meshes and destroys
+  per-object names, and `flatten`/`prune` drop mesh-less nodes — which silently
+  removes every `HS_*` and `CAMERA_*` empty. Verified: the full `optimize` pipeline
+  strips all of them, while `webp` + `draco` alone preserves everything for ~0.7 MB
+  more. Re-check names in a viewer after any pipeline change.
 - Sanity-check the result at https://gltf-viewer.donmccurdy.com/ before handing off:
   orientation, materials, and that the Empties survived the export.
 
@@ -162,10 +169,14 @@ architectural renders read as "real". Baking moves that quality offline:
    and bake AO (`Bake type: Ambient Occlusion`, ~1024–2048px per major surface).
    Multiply the AO into the base color textures (or wire it to the glTF settings
    node so it exports as the occlusion map).
-3. **Full lightmap bake for hero areas** (stage, registration): `Bake type:
-   Combined` with `Direct + Indirect` contributions, then plug the result in as
-   emissive or pre-multiplied base color. This is what makes floors glow softly
-   under stage lighting.
+3. **Full lightmap bake** (`Bake type: Combined`, Direct + Indirect) is what makes
+   floors glow softly under stage lighting. Wire the result as **emissive** with
+   `emissiveFactor` 1,1,1 and set the material's **base colour to black** — that
+   way the diffuse term contributes nothing, runtime lights can't double-light the
+   surface, and it renders on the web exactly as it did in Cycles. Name these
+   materials `BAKED_*`; the app keys off that prefix to skip them when assigning
+   runtime shadows (their shadows are already baked in). Bake to a second UV set
+   (`TEXCOORD_1`) so the lightmap is independent of the tiling UVs.
 4. **Compress textures to KTX2** so the added texture weight stays cheap on the
    GPU (KTX2 stays compressed in VRAM; PNG/JPG decompress to full size):
    ```bash

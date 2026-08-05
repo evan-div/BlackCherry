@@ -9,10 +9,14 @@ interface LightingProps {
   venueScale?: boolean;
 }
 
-/** A neutral IBL environment plus one shadow-casting key light, tuned for a static,
- * mostly-baked show floor (see README Blender export checklist). The shadow map is
+/** A neutral IBL environment plus one shadow-casting key light. The shadow map is
  * rendered once on mount/scene-change rather than every frame — `gl.shadowMap.autoUpdate`
- * is disabled in ExplorerCanvas, so we flag `needsUpdate` here after the light settles. */
+ * is disabled in ExplorerCanvas, so we flag `needsUpdate` here after the light settles.
+ *
+ * With the current export this rig only lights the NON-baked content — people, props,
+ * furniture. The architecture (floors/walls/ceiling) ships with Blender-baked lighting
+ * as an emissive lightmap over a black base colour, so it renders exactly as baked and
+ * is deliberately untouched by anything here (see TradeShowModel's isBakedSurface). */
 export function Lighting({ venueScale = false }: LightingProps) {
   const lightRef = useRef<DirectionalLight>(null);
   const { gl, invalidate } = useThree();
@@ -20,17 +24,17 @@ export function Lighting({ venueScale = false }: LightingProps) {
   useEffect(() => {
     const light = lightRef.current;
     if (!light) return;
-    // One 2048 map stretched over the whole walkable area: the venue needs a much
-    // wider frustum than the placeholder or most of the hall simply has no shadows
-    // (anything outside the frustum renders unshadowed, which reads as floating).
-    const extent = venueScale ? 80 : 18;
+    // Frustum covers the walkable venue (~52x61m). Kept as tight as possible: the
+    // one 2048 map is spread over this whole extent, so every extra metre costs
+    // shadow resolution on the props that actually cast.
+    const extent = venueScale ? 34 : 18;
     light.shadow.mapSize.set(2048, 2048);
     light.shadow.camera.left = -extent;
     light.shadow.camera.right = extent;
     light.shadow.camera.top = extent;
     light.shadow.camera.bottom = -extent;
     light.shadow.camera.near = 1;
-    light.shadow.camera.far = venueScale ? 220 : 40;
+    light.shadow.camera.far = venueScale ? 120 : 40;
     // Wider frustum spreads the same texels thinner — the venue needs a larger
     // bias or the low-res depth comparison speckles every surface with acne.
     light.shadow.bias = venueScale ? -0.0004 : -0.0015;
@@ -60,7 +64,7 @@ export function Lighting({ venueScale = false }: LightingProps) {
       <ambientLight intensity={0.12} />
       <directionalLight
         ref={lightRef}
-        position={venueScale ? [35, 50, 25] : [10, 14, 6]}
+        position={venueScale ? [18, 34, 26] : [10, 14, 6]}
         intensity={venueScale ? 1.7 : 1.4}
         castShadow
       />

@@ -78,18 +78,18 @@ export const placeholderHotspots: Hotspot[] = [
 export const tradeShowHotspots: Hotspot[] = [
   {
     id: 'main-stage',
-    anchor: { type: 'node', nodeName: 'HS_main-stage', fallbackPosition: [0, 2, 3] },
+    anchor: { type: 'node', nodeName: 'HS_main-stage', fallbackPosition: [2.9, 0.9, -5.0] },
     title: 'Main Stage',
     description:
       'The keynote stage with podium, ready for keynote speakers, panels, and product announcements.',
     category: 'stage',
-    cameraView: { position: [6, 2.2, 10], distance: 6 },
+    cameraView: { distance: 9 },
     ctaLabel: 'Check it out',
     ctaUrl: '#',
   },
   {
     id: 'stage-backdrop',
-    anchor: { type: 'node', nodeName: 'HS_stage-backdrop', fallbackPosition: [0, 3.5, -3] },
+    anchor: { type: 'node', nodeName: 'HS_stage-backdrop', fallbackPosition: [2.9, 2.9, -7.3] },
     title: 'Presentation Backdrop',
     description:
       'A full-width curtain and screen backdrop frames the stage for maximum visual impact from every seat.',
@@ -100,29 +100,29 @@ export const tradeShowHotspots: Hotspot[] = [
   },
   {
     id: 'banquet-seating',
-    anchor: { type: 'node', nodeName: 'HS_banquet-seating', fallbackPosition: [0, 1, 20] },
+    anchor: { type: 'node', nodeName: 'HS_banquet-seating', fallbackPosition: [2.9, 0.5, 10.7] },
     title: 'Banquet Seating',
     description:
       'Round-table seating for banquet dinners, awards ceremonies, and networking sessions between sessions.',
     category: 'furniture',
-    cameraView: { position: [0, 12, 4], distance: 20 },
+    cameraView: { distance: 16 },
     ctaLabel: 'Check it out',
     ctaUrl: '#',
   },
   {
     id: 'exhibitor-tables',
-    anchor: { type: 'node', nodeName: 'HS_exhibitor-tables', fallbackPosition: [-33, 1, 20] },
+    anchor: { type: 'node', nodeName: 'HS_exhibitor-tables', fallbackPosition: [-7.6, 0.5, 18.0] },
     title: 'Exhibitor Tables',
     description:
       'Dedicated tables for sponsors and exhibiting partners to showcase their products alongside the main program.',
     category: 'product',
-    cameraView: { position: [-33, 10, 0], distance: 18 },
+    cameraView: { distance: 14 },
     ctaLabel: 'Check it out',
     ctaUrl: '#',
   },
   {
     id: 'registration',
-    anchor: { type: 'node', nodeName: 'HS_registration', fallbackPosition: [16, 1.5, 78] },
+    anchor: { type: 'node', nodeName: 'HS_registration', fallbackPosition: [7.3, 0.6, 41.0] },
     title: 'Registration & Lobby',
     description:
       'The registration desk and lobby area — the first impression attendees get when they arrive.',

@@ -28,23 +28,24 @@ export const DEFAULT_WALK: WalkDefaults = {
 };
 
 /**
- * Tuned to the real trade-show.glb (a ~103m x 121m conference hall — bounding box
- * roughly X:[-61, 41] Z:[-16, 105], see the export checklist in README for how
- * these numbers were derived: no CAMERA_DEFAULT/COLLISION_* empties were authored
- * in this particular export, so these are hand-picked from the model's actual
- * geometry rather than read from the asset itself). Default view frames the main
- * stage/podium area near the origin.
+ * Tuned to the real trade-show.glb. Its VISIBLE geometry spans roughly
+ * X:[-31, 21] Z:[-9, 53] — a ~52m x 61m hall.
+ *
+ * `position`/`target` here are only a fallback: that export authors `CAMERA_DEFAULT`
+ * and `CAMERA_TARGET` empties, which SceneRoot resolves on load and which override
+ * these (see scene/SceneConfig.tsx). They're kept so the app still frames the venue
+ * sensibly if a future export drops those empties.
  */
 export const TRADE_SHOW_CAMERA: CameraDefaults = {
-  position: [22, 13, 32],
-  target: [0, 2, 4],
+  position: [3, 14, 42],
+  target: [3, 2, 4],
   minDistance: 2,
-  maxDistance: 160,
+  maxDistance: 110,
   minPolarAngle: 0.1,
   maxPolarAngle: 1.5,
   targetBounds: {
-    min: [-58, 0, -15],
-    max: [38, 20, 100],
+    min: [-31, 0, -9],
+    max: [21, 14, 53],
   },
 };
 
@@ -53,12 +54,14 @@ export const TRADE_SHOW_WALK: WalkDefaults = {
   speed: 3.5,
   sprintMultiplier: 2.5,
   radius: 0.35,
-  // Trimmed a few meters inside the model's actual bounding box (bbox min/max is
-  // roughly X:[-61,41] Z:[-16,105]) as a safety margin against walking through
-  // unseen exterior walls — there's no authored COLLISION mesh to clamp against.
+  // Trimmed just inside the VISIBLE floor (X:[-31,21] Z:[-9,53]). This deliberately
+  // does NOT match the authored COLLISION_Floor, which is ~100x121m — sized to an
+  // earlier, larger layout and extending ~52m past where the visible venue ends.
+  // Until that proxy is rebuilt, this clamp is what stops a walker strolling off
+  // the end of the building onto invisible floor.
   bounds: {
-    min: [-55, -12],
-    max: [35, 96],
+    min: [-29, -7],
+    max: [19, 51],
   },
 };
 

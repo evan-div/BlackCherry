@@ -1,15 +1,25 @@
 import { useEffect, useMemo } from 'react';
 import { useGLTF } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
-import { Mesh } from 'three';
+import { Material, Mesh } from 'three';
 import { configureGltfLoader } from '../loaders/gltf';
-import { applySurfaceMaterials } from './applySurfaceMaterials';
 
 interface TradeShowModelProps {
   url: string;
   decoderPath?: string;
   ktx2Path?: string;
   onLoaded?: (scene: import('three').Group) => void;
+}
+
+/** True when a mesh's material carries Blender-baked lighting. The export bakes
+ * each architectural surface to an EMISSIVE lightmap with a BLACK baseColorFactor,
+ * so the surface renders exactly as baked and runtime lights contribute nothing to
+ * it — that's what makes the bake authoritative rather than something our lighting
+ * rig fights with. Detected via the `BAKED_` material-name prefix the exporter
+ * uses. */
+function isBakedSurface(mesh: Mesh): boolean {
+  const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+  return materials.some((m) => m instanceof Material && m.name.startsWith('BAKED_'));
 }
 
 /** Loads the Blender-exported trade show GLB. Collision proxy nodes (named
@@ -24,22 +34,18 @@ export function TradeShowModel({ url, decoderPath, ktx2Path, onLoaded }: TradeSh
   const { scene } = useGLTF(url, false, false, extend);
 
   useEffect(() => {
-    // Re-skin the big architectural surfaces (floor → polished concrete, shell →
-    // plaster) before freezing matrices below — it reads world matrices and bakes
-    // world-space floor UVs, so it must run while matrices are still live. Idempotent
-    // across remounts (see applySurfaceMaterials).
-    applySurfaceMaterials(scene);
-
     scene.traverse((obj) => {
       if (obj.name.startsWith('COLLISION')) {
         obj.visible = false;
       }
       if (obj instanceof Mesh) {
-        // applySurfaceMaterials tags the building shell/walls so they don't cast
-        // the floor-wide shadow the overhead light would otherwise throw off the
-        // envelope; everything else casts normally.
-        obj.castShadow = obj.userData.tseNoCastShadow !== true;
-        obj.receiveShadow = true;
+        // Baked surfaces already contain their own shadowing, so they neither cast
+        // (doubling up onto un-baked props) nor receive (their black baseColor makes
+        // received light a no-op anyway — skipping it is a free saving). Un-baked
+        // objects — people, props, furniture — still use the runtime rig normally.
+        const baked = isBakedSurface(obj);
+        obj.castShadow = !baked;
+        obj.receiveShadow = !baked;
       }
       obj.matrixAutoUpdate = false;
       obj.updateMatrix();
