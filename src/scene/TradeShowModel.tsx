@@ -17,10 +17,30 @@ interface TradeShowModelProps {
  * so the surface renders exactly as baked and runtime lights contribute nothing to
  * it — that's what makes the bake authoritative rather than something our lighting
  * rig fights with. Detected via the `BAKED_` material-name prefix the exporter
- * uses. */
+ * uses. (The prefix survives three.js stripping `.` from names, so `BAKED_Cube.035`
+ * arriving as `BAKED_Cube035` still matches.) */
 function isBakedSurface(mesh: Mesh): boolean {
   const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
   return materials.some((m) => m instanceof Material && m.name.startsWith('BAKED_'));
+}
+
+/**
+ * The baked lightmaps are DISPLAY-REFERRED: Blender's AgX view transform is already
+ * applied inside the texture, so the image is a finished picture rather than linear
+ * radiance. Running the renderer's ACES pass over it tone-maps a second time, which
+ * desaturates and flattens exactly the contrast the bake was made to carry.
+ *
+ * Opting these materials out of tone mapping makes them render as authored, while
+ * the runtime-lit props — which ARE linear and do want ACES — keep it.
+ */
+function optOutBakedFromToneMapping(mesh: Mesh): void {
+  const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+  for (const m of materials) {
+    if (m instanceof Material && m.name.startsWith('BAKED_') && m.toneMapped) {
+      m.toneMapped = false;
+      m.needsUpdate = true;
+    }
+  }
 }
 
 /**
@@ -60,6 +80,7 @@ export function TradeShowModel({ url, decoderPath, ktx2Path, onLoaded }: TradeSh
       }
       if (obj instanceof Mesh) {
         repairSelfReferencingNormalMaps(obj);
+        optOutBakedFromToneMapping(obj);
         // Baked surfaces already contain their own shadowing, so they neither cast
         // (doubling up onto un-baked props) nor receive (their black baseColor makes
         // received light a no-op anyway — skipping it is a free saving). Un-baked

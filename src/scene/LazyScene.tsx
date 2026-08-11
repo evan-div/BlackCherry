@@ -33,16 +33,12 @@ export default function LazyScene({ onContextLost, ...sceneProps }: LazyScenePro
   // Far plane must clear the whole scene depth-wise or distant geometry clips; the
   // real trade show hall is ~120m deep vs. the placeholder's ~40m.
   const far = hasModel ? 400 : 100;
-  // The venue ships Blender-baked lighting, i.e. a finished image; lifting it further
-  // is what pushed the bright pools toward blown-out white.
-  const exposure = hasModel ? 0.9 : 1.05;
 
   return (
     <>
       <ExplorerCanvas
         initialCameraPosition={cameraDefaults.position}
         far={far}
-        exposure={exposure}
         onContextLost={onContextLost}
       >
         <SceneRoot {...sceneProps} />
