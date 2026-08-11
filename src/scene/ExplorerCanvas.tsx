@@ -9,6 +9,9 @@ interface ExplorerCanvasProps {
   initialCameraPosition: [number, number, number];
   /** Camera far plane — must clear the whole scene's depth, or distant geometry clips. */
   far: number;
+  /** ACES exposure. A Blender-baked scene is already a finished image, so it wants
+   * roughly neutral exposure; the procedural placeholder benefits from a slight lift. */
+  exposure?: number;
   onContextLost?: () => void;
   onContextRestored?: () => void;
 }
@@ -20,6 +23,7 @@ export function ExplorerCanvas({
   children,
   initialCameraPosition,
   far,
+  exposure = 1.05,
   onContextLost,
   onContextRestored,
 }: ExplorerCanvasProps) {
@@ -39,7 +43,7 @@ export function ExplorerCanvas({
       onCreated={({ gl }) => {
         gl.outputColorSpace = SRGBColorSpace;
         gl.toneMapping = ACESFilmicToneMapping;
-        gl.toneMappingExposure = 1.05;
+        gl.toneMappingExposure = exposure;
         gl.shadowMap.autoUpdate = false;
 
         const canvas = gl.domElement;

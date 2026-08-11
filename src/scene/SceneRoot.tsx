@@ -78,11 +78,16 @@ export function SceneRoot({
   // trade show floor is a ~120m hall — the placeholder's fog range would erase most
   // of the real venue almost immediately.
   const [fogNear, fogFar] = modelUrl ? [60, 150] : [22, 42];
+  // The real venue is an interior lit by its own baked lighting, so the void around
+  // it should read as unlit space, not daylight — a bright backdrop makes the hall
+  // look like a model sitting on a white table and blows out the contrast the bake
+  // is carrying. The procedural placeholder keeps its light studio backdrop.
+  const backdrop = modelUrl ? '#0a0b0e' : '#dde1e8';
 
   return (
     <SceneConfigProvider hasModel={!!modelUrl} authoredCamera={authoredCamera}>
-      <color attach="background" args={['#dde1e8']} />
-      <fog attach="fog" args={['#dde1e8', fogNear, fogFar]} />
+      <color attach="background" args={[backdrop]} />
+      <fog attach="fog" args={[backdrop, fogNear, fogFar]} />
       <ControlsRig keysRef={keysRef} />
       <Lighting venueScale={!!modelUrl} />
       <Suspense fallback={null}>

@@ -51,7 +51,7 @@ export function Lighting({ venueScale = false }: LightingProps) {
        * convention-hall environment: a big overhead wash plus cool/warm side fills so
        * materials get directional variation in their reflections instead of a flat
        * single-tone response. */}
-      <Environment resolution={256} environmentIntensity={venueScale ? 0.85 : 0.6}>
+      <Environment resolution={256} environmentIntensity={venueScale ? 0.22 : 0.6}>
         <Lightformer form="rect" intensity={2.2} position={[0, 10, -14]} scale={[16, 8, 1]} color="#ffffff" />
         <Lightformer form="rect" intensity={1.1} position={[-10, 6, 5]} rotation={[0, Math.PI / 3, 0]} scale={[8, 5, 1]} color="#c9d4ff" />
         <Lightformer form="rect" intensity={1.1} position={[10, 6, 5]} rotation={[0, -Math.PI / 3, 0]} scale={[8, 5, 1]} color="#ffe9c4" />
@@ -59,13 +59,19 @@ export function Lighting({ venueScale = false }: LightingProps) {
         <Lightformer form="rect" intensity={0.7} position={[0, 8, 18]} rotation={[0, Math.PI, 0]} scale={[14, 6, 1]} color="#f2f4f8" />
       </Environment>
       {/* Hemisphere fill (cool ceiling light down, warm floor bounce up) reads far
-       * more like a real interior than a flat ambient term, which grays everything. */}
-      <hemisphereLight args={['#dfe6f5', '#b8ac9c', venueScale ? 0.5 : 0.35]} />
-      <ambientLight intensity={0.12} />
+       * more like a real interior than a flat ambient term, which grays everything.
+       *
+       * All three of these are deliberately DIM for the baked venue: they light only
+       * the handful of un-baked props (tables, banners, screens), which have to sit
+       * inside a dim baked interior lit by its own pooled stage lighting. At the
+       * intensities used for the old flat-grey model they blew those props out to
+       * white and flattened the bake's contrast. */}
+      <hemisphereLight args={['#dfe6f5', '#b8ac9c', venueScale ? 0.18 : 0.35]} />
+      <ambientLight intensity={venueScale ? 0.05 : 0.12} />
       <directionalLight
         ref={lightRef}
         position={venueScale ? [18, 34, 26] : [10, 14, 6]}
-        intensity={venueScale ? 1.7 : 1.4}
+        intensity={venueScale ? 0.5 : 1.4}
         castShadow
       />
     </>

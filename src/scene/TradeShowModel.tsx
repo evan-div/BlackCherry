@@ -1,8 +1,9 @@
 import { useEffect, useMemo } from 'react';
 import { useGLTF } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
-import { Material, Mesh } from 'three';
+import { Material, Mesh, MeshStandardMaterial } from 'three';
 import { configureGltfLoader } from '../loaders/gltf';
+import { useExplorerStore } from '../state/store';
 
 interface TradeShowModelProps {
   url: string;
@@ -22,12 +23,31 @@ function isBakedSurface(mesh: Mesh): boolean {
   return materials.some((m) => m instanceof Material && m.name.startsWith('BAKED_'));
 }
 
+/**
+ * Repairs an export bug: the tablecloth materials wire the SAME image as both
+ * `map` and `normalMap`. A colour texture read as a tangent-space normal map
+ * produces violent bogus shading — the "crumpled foil" look the cloths had.
+ * A single image can never validly be both, so dropping the normal map is a safe,
+ * general rule that also survives re-exports (rather than patching the asset,
+ * which a re-export would undo).
+ */
+function repairSelfReferencingNormalMaps(mesh: Mesh): void {
+  const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+  for (const m of materials) {
+    if (m instanceof MeshStandardMaterial && m.normalMap && m.normalMap === m.map) {
+      m.normalMap = null;
+      m.needsUpdate = true;
+    }
+  }
+}
+
 /** Loads the Blender-exported trade show GLB. Collision proxy nodes (named
  * `COLLISION*`) are authored to be invisible in the final render — they're hidden
  * here rather than removed so `collision.ts` can still find and raycast against them.
  * Static geometry gets `matrixAutoUpdate = false` since nothing in this scene moves. */
 export function TradeShowModel({ url, decoderPath, ktx2Path, onLoaded }: TradeShowModelProps) {
-  const { gl } = useThree();
+  const { gl, invalidate } = useThree();
+  const isWalking = useExplorerStore((s) => s.mode === 'walk');
   const extend = useMemo(() => configureGltfLoader(gl, decoderPath, ktx2Path), [gl, decoderPath, ktx2Path]);
   // useDraco/useMeshopt are forced false: drei's own defaults run *after* our extend
   // callback and would overwrite our self-hosted DRACOLoader with its CDN-pathed one.
@@ -39,10 +59,11 @@ export function TradeShowModel({ url, decoderPath, ktx2Path, onLoaded }: TradeSh
         obj.visible = false;
       }
       if (obj instanceof Mesh) {
+        repairSelfReferencingNormalMaps(obj);
         // Baked surfaces already contain their own shadowing, so they neither cast
         // (doubling up onto un-baked props) nor receive (their black baseColor makes
         // received light a no-op anyway — skipping it is a free saving). Un-baked
-        // objects — people, props, furniture — still use the runtime rig normally.
+        // objects — props, furniture — still use the runtime rig normally.
         const baked = isBakedSurface(obj);
         obj.castShadow = !baked;
         obj.receiveShadow = !baked;
@@ -52,6 +73,17 @@ export function TradeShowModel({ url, decoderPath, ktx2Path, onLoaded }: TradeSh
     });
     onLoaded?.(scene);
   }, [scene, onLoaded]);
+
+  // The roof is only wanted from the inside. In explore mode the orbit camera sits
+  // above the venue, where an intact ceiling means you stare at its outer surface
+  // and see nothing of the floor — so hide it there and restore it for walk mode,
+  // where being enclosed is the whole point.
+  useEffect(() => {
+    scene.traverse((obj) => {
+      if (/^Ceiling/i.test(obj.name)) obj.visible = isWalking;
+    });
+    invalidate();
+  }, [scene, isWalking, invalidate]);
 
   // dispose={null}: `scene` comes from drei's URL-keyed GLTF cache, shared across
   // remounts (e.g. an error-retry unmounts and remounts this component with the
