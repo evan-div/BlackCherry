@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "build:lib": "tsc -b && vite build --mode lib",
-    "optimize-model": "gltf-transform webp public/models/trade-show.glb public/models/_tmp.glb && gltf-transform draco public/models/_tmp.glb public/models/trade-show.glb && rm -f public/models/_tmp.glb",
+    "optimize-model": "gltf-transform draco public/models/trade-show.glb public/models/_tmp.glb && mv public/models/_tmp.glb public/models/trade-show.glb",
     "lint": "oxlint",
     "preview": "vite preview"
   },
