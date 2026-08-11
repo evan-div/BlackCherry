@@ -12,31 +12,56 @@ interface TradeShowModelProps {
   onLoaded?: (scene: import('three').Group) => void;
 }
 
-/** True when a mesh's material carries Blender-baked lighting. The export bakes
- * each architectural surface to an EMISSIVE lightmap with a BLACK baseColorFactor,
- * so the surface renders exactly as baked and runtime lights contribute nothing to
- * it — that's what makes the bake authoritative rather than something our lighting
- * rig fights with. Detected via the `BAKED_` material-name prefix the exporter
- * uses. (The prefix survives three.js stripping `.` from names, so `BAKED_Cube.035`
- * arriving as `BAKED_Cube035` still matches.) */
-function isBakedSurface(mesh: Mesh): boolean {
-  const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-  return materials.some((m) => m instanceof Material && m.name.startsWith('BAKED_'));
+/**
+ * True for a material authored as UNLIT — the export's convention for anything whose
+ * appearance is already finished and must not be re-lit or re-graded at runtime:
+ * a BLACK base colour (so lights and shadows contribute nothing) carrying its entire
+ * appearance in emissive.
+ *
+ * Deliberately a STRUCTURAL test rather than a name-prefix one. It started as a
+ * `BAKED_` prefix check, which silently missed the phase-4 light fixtures
+ * (`EMISSIVE_Ceiling_Panel`) — those are unlit the same way but carry a flat
+ * emissiveFactor with no emissive texture, so they'd have been tone-mapped and
+ * rendered grey. Testing the authoring contract itself covers the shell, the
+ * fixtures, and whatever the next export names its unlit surfaces.
+ *
+ * Note the emissive test accepts a factor OR a texture: fixtures have only a factor,
+ * baked shell surfaces have a lightmap. A black base with NEITHER (the curtains) is
+ * genuinely just a black object and is correctly excluded — it still wants normal
+ * lighting and shadow behaviour.
+ */
+function isUnlitMaterial(m: Material): boolean {
+  if (!(m instanceof MeshStandardMaterial)) return false;
+  const baseIsBlack = m.color.r === 0 && m.color.g === 0 && m.color.b === 0;
+  if (!baseIsBlack) return false;
+  return !!m.emissiveMap || m.emissive.r > 0 || m.emissive.g > 0 || m.emissive.b > 0;
+}
+
+function meshMaterials(mesh: Mesh): Material[] {
+  return (Array.isArray(mesh.material) ? mesh.material : [mesh.material]).filter(
+    (m): m is Material => m instanceof Material,
+  );
+}
+
+/** True when any of a mesh's materials is unlit (see isUnlitMaterial). */
+function isUnlitSurface(mesh: Mesh): boolean {
+  return meshMaterials(mesh).some(isUnlitMaterial);
 }
 
 /**
- * The baked lightmaps are DISPLAY-REFERRED: Blender's AgX view transform is already
- * applied inside the texture, so the image is a finished picture rather than linear
- * radiance. Running the renderer's ACES pass over it tone-maps a second time, which
- * desaturates and flattens exactly the contrast the bake was made to carry.
+ * Unlit surfaces are DISPLAY-REFERRED: Blender's AgX view transform is already applied
+ * inside the baked lightmaps (and the fixture emissives are authored to sit against
+ * them), so they are finished pictures rather than linear radiance. Running the
+ * renderer's ACES pass over them tone-maps a second time, which desaturates and
+ * flattens exactly the contrast they were made to carry — the shell reads dull and
+ * the light fixtures read grey instead of glowing.
  *
- * Opting these materials out of tone mapping makes them render as authored, while
- * the runtime-lit props — which ARE linear and do want ACES — keep it.
+ * Opting them out of tone mapping renders them as authored, while the runtime-lit
+ * props — which ARE linear and do want ACES — keep it.
  */
-function optOutBakedFromToneMapping(mesh: Mesh): void {
-  const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-  for (const m of materials) {
-    if (m instanceof Material && m.name.startsWith('BAKED_') && m.toneMapped) {
+function optOutUnlitFromToneMapping(mesh: Mesh): void {
+  for (const m of meshMaterials(mesh)) {
+    if (isUnlitMaterial(m) && m.toneMapped) {
       m.toneMapped = false;
       m.needsUpdate = true;
     }
@@ -52,8 +77,7 @@ function optOutBakedFromToneMapping(mesh: Mesh): void {
  * which a re-export would undo).
  */
 function repairSelfReferencingNormalMaps(mesh: Mesh): void {
-  const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-  for (const m of materials) {
+  for (const m of meshMaterials(mesh)) {
     if (m instanceof MeshStandardMaterial && m.normalMap && m.normalMap === m.map) {
       m.normalMap = null;
       m.needsUpdate = true;
@@ -80,14 +104,16 @@ export function TradeShowModel({ url, decoderPath, ktx2Path, onLoaded }: TradeSh
       }
       if (obj instanceof Mesh) {
         repairSelfReferencingNormalMaps(obj);
-        optOutBakedFromToneMapping(obj);
-        // Baked surfaces already contain their own shadowing, so they neither cast
-        // (doubling up onto un-baked props) nor receive (their black baseColor makes
-        // received light a no-op anyway — skipping it is a free saving). Un-baked
-        // objects — props, furniture — still use the runtime rig normally.
-        const baked = isBakedSurface(obj);
-        obj.castShadow = !baked;
-        obj.receiveShadow = !baked;
+        optOutUnlitFromToneMapping(obj);
+        // Unlit surfaces already contain their own shadowing, so they neither cast
+        // (doubling up onto the runtime-lit props) nor receive (their black base
+        // colour makes received light a no-op anyway — skipping it is a free
+        // saving). This covers the baked shell and the emissive light fixtures,
+        // which should glow rather than drop shadows. Everything else — tables,
+        // chairs, banners — still uses the runtime rig normally.
+        const unlit = isUnlitSurface(obj);
+        obj.castShadow = !unlit;
+        obj.receiveShadow = !unlit;
       }
       obj.matrixAutoUpdate = false;
       obj.updateMatrix();
