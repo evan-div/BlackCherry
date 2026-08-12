@@ -78,6 +78,7 @@ export type ExplorerAnalyticsEvent =
   | { type: 'hotspot_closed'; hotspotId: string }
   | { type: 'cta_clicked'; hotspotId: string; ctaUrl: string }
   | { type: 'lead_submitted'; hotspotId: string }
+  | { type: 'mobile_fallback_shown' }
   | { type: 'tour_started' }
   | { type: 'tour_ended'; reason: 'completed' | 'user_input' | 'stopped' };
 
@@ -132,6 +133,11 @@ export interface ExplorerProps {
    * CRM/webhook. Return a promise to keep the form in its submitting state until
    * it resolves; throw/reject to surface an error and let the user retry. */
   onLeadSubmit?: (lead: HotspotLead) => void | Promise<void>;
+  /** Restrict the 3D experience to devices that can actually run it well. When true,
+   * touch-only devices get MobileFallback instead — the venue photo plus every space,
+   * description and CTA/lead form, with the Canvas and the three.js chunk never
+   * loaded. Off by default. */
+  desktopOnly?: boolean;
   /** Opt-in shareable deep-links. When true, the explorer reads `?tse_hotspot=<id>`
    * and `?tse_mode=walk` from the page URL on load (auto-activating and opening that
    * hotspot / entering walk mode), and keeps those params in sync as the user

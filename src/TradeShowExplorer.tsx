@@ -5,6 +5,7 @@ import { ScenePoster } from './ui/ScenePoster';
 import { Overlay } from './ui/Overlay';
 import { ErrorScreen } from './ui/ErrorScreen';
 import { HotspotCard } from './ui/HotspotCard';
+import { MobileFallback } from './ui/MobileFallback';
 import './ui/styles.css';
 import { themeToCssVars } from './config/theme';
 import { DEFAULT_WALK, TRADE_SHOW_WALK } from './config/defaults';
@@ -68,6 +69,7 @@ function ExplorerInner({
   onHotspotSelect,
   onAnalyticsEvent,
   onLeadSubmit,
+  desktopOnly = false,
   deepLink = false,
   deepLinkIntent,
 }: ExplorerProps & { deepLinkIntent: DeepLinkIntent | null }) {
@@ -81,7 +83,14 @@ function ExplorerInner({
   const webglSupported = useWebglSupported();
   const isTouchOnly = useIsTouchOnly();
   const inViewport = useInViewport(rootRef);
-  const shouldMountScene = webglSupported && (lazyMode === 'eager' || inViewport);
+  // Desktop-only: touch devices get the content-and-CTA fallback instead of the 3D
+  // scene. Gating `shouldMountScene` on it (rather than only branching the render
+  // below) is what actually keeps phones from paying for 3D — that flag drives the
+  // Canvas mount, the lazy three.js import AND the multi-megabyte GLB warmup, all of
+  // which would otherwise fire the moment the widget scrolled into view.
+  const showMobileFallback = desktopOnly && isTouchOnly;
+  const shouldMountScene =
+    !showMobileFallback && webglSupported && (lazyMode === 'eager' || inViewport);
 
   const setLoading = useExplorerStore((s) => s.setLoading);
   const setError = useExplorerStore((s) => s.setError);
@@ -142,11 +151,11 @@ function ExplorerInner({
   }, [error]);
 
   useEffect(() => {
-    if (!webglSupported) {
+    if (!webglSupported && !showMobileFallback) {
       setError('This browser or device does not support WebGL, which the 3D explorer requires.');
       setLoading({ active: false });
     }
-  }, [webglSupported, setError, setLoading]);
+  }, [webglSupported, showMobileFallback, setError, setLoading]);
 
   useEffect(() => {
     // The procedural placeholder has nothing to await — clear the loading state as
@@ -207,12 +216,33 @@ function ExplorerInner({
     retry();
   }, [modelUrl, retry]);
 
+  useEffect(() => {
+    if (showMobileFallback) emitAnalytics({ type: 'mobile_fallback_shown' });
+  }, [showMobileFallback, emitAnalytics]);
+
   const sizeStyle: CSSProperties =
     height === 'fill'
       ? { height: '100%' }
       : height
         ? { height }
         : { aspectRatio: String(aspect) };
+
+  if (showMobileFallback) {
+    return (
+      <div
+        ref={rootRef}
+        className="tse-root tse-root--mobile"
+        style={{ ...themeToCssVars(theme), ...(height ? sizeStyle : null) }}
+      >
+        <MobileFallback
+          hotspots={resolvedHotspots}
+          posterUrl={posterUrl}
+          onCtaClick={handleCtaClick}
+          onLeadSubmit={onLeadSubmit ? handleLeadSubmit : undefined}
+        />
+      </div>
+    );
+  }
 
   return (
     <div

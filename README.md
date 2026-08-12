@@ -89,9 +89,23 @@ import { TradeShowExplorer } from '@blackcherry/trade-show-explorer';
 | `aspect` / `height` | `16/9` | `height="fill"` fills a sized parent instead |
 | `lazy` | `'viewport'` | mounts the 3D chunk only once scrolled near |
 | `decoderPath` / `ktx2Path` | `/draco/`, `/basis/` | override if self-hosting decoders elsewhere |
+| `desktopOnly` | `false` | touch-only devices get the mobile fallback instead of the 3D scene |
 
 Each `<TradeShowExplorer>` instance owns its own isolated state — mounting more than
 one on a page is safe.
+
+### `desktopOnly` and the mobile fallback
+
+The venue asset is built for a real GPU, so `desktopOnly` restricts the 3D experience
+to devices that can run it well. On a touch-only device the explorer renders
+`MobileFallback` instead: the poster image, then every hotspot as an expandable row
+with its photo, description and the same CTA (or lead-capture form) the 3D card
+carries. Mobile visitors keep the whole content-and-conversion path — they just read
+the venue instead of walking it.
+
+It's a real saving, not just a different view: the Canvas never mounts, the three.js
+chunk is never imported and the GLB is never fetched, so a phone downloads none of
+the 3D payload. Hosts see a `mobile_fallback_shown` analytics event when it renders.
 
 ## Editing hotspots
 

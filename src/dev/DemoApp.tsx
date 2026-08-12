@@ -25,6 +25,7 @@ export function DemoApp() {
           aspect={16 / 9}
           modelUrl="/models/trade-show.glb"
           deepLink
+          desktopOnly
           onLeadSubmit={(lead) => {
             // Demo stand-in for a real CRM/webhook call.
             // eslint-disable-next-line no-console
