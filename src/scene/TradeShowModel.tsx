@@ -1,9 +1,12 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useGLTF } from '@react-three/drei';
-import { useThree } from '@react-three/fiber';
-import { Material, Mesh, MeshStandardMaterial } from 'three';
+import { useFrame, useThree } from '@react-three/fiber';
+import { Material, Mesh, MeshStandardMaterial, type Object3D } from 'three';
 import { configureGltfLoader } from '../loaders/gltf';
-import { useExplorerStore } from '../state/store';
+
+/** Clear ceiling height of the venue, in metres — measured from the export
+ * (`Wall_Main_North` is 7.510 m tall and the ceiling panels sit flush at 7.49 m). */
+const ROOF_HEIGHT = 7.5;
 
 interface TradeShowModelProps {
   url: string;
@@ -91,7 +94,6 @@ function repairSelfReferencingNormalMaps(mesh: Mesh): void {
  * Static geometry gets `matrixAutoUpdate = false` since nothing in this scene moves. */
 export function TradeShowModel({ url, decoderPath, ktx2Path, onLoaded }: TradeShowModelProps) {
   const { gl, invalidate } = useThree();
-  const isWalking = useExplorerStore((s) => s.mode === 'walk');
   const extend = useMemo(() => configureGltfLoader(gl, decoderPath, ktx2Path), [gl, decoderPath, ktx2Path]);
   // useDraco/useMeshopt are forced false: drei's own defaults run *after* our extend
   // callback and would overwrite our self-hosted DRACOLoader with its CDN-pathed one.
@@ -121,16 +123,43 @@ export function TradeShowModel({ url, decoderPath, ktx2Path, onLoaded }: TradeSh
     onLoaded?.(scene);
   }, [scene, onLoaded]);
 
-  // The roof is only wanted from the inside. In explore mode the orbit camera sits
-  // above the venue, where an intact ceiling means you stare at its outer surface
-  // and see nothing of the floor — so hide it there and restore it for walk mode,
-  // where being enclosed is the whole point.
+  // The roof gets in the way exactly when you're looking down from above it: an intact
+  // ceiling means you stare at its outer surface and see nothing of the floor.
+  //
+  // So the test is the CAMERA'S HEIGHT, not the mode. Hiding it by mode looked right
+  // while the ceiling was low, but the export's own `CAMERA_DEFAULT` puts explore mode
+  // at 1.70 m eye height — inside the room — where a mode-based rule opened the roof
+  // onto empty backdrop and left a black band above the far wall in the default view.
+  // Height covers both cases with one rule: enclosed at room level in either mode,
+  // open as soon as you lift the orbit camera over the roofline.
+  //
+  // The 31 recessed light panels are toggled with it. They sit flush IN the ceiling but
+  // are separate top-level nodes rather than its children, so hiding only the ceiling
+  // would leave a grid of bright white quads hanging in mid-air between the orbit
+  // camera and the floor — the exact view the ceiling is hidden to reveal.
+  const roofRef = useRef<Object3D[]>([]);
   useEffect(() => {
+    const roof: Object3D[] = [];
     scene.traverse((obj) => {
-      if (/^Ceiling/i.test(obj.name)) obj.visible = isWalking;
+      if (/^Ceiling/i.test(obj.name) || obj.name.startsWith('FIXTURE')) roof.push(obj);
     });
+    roofRef.current = roof;
+  }, [scene]);
+
+  // Runs only on frames that are actually rendered (frameloop="demand"), i.e. while the
+  // camera is moving — so this is a float compare on exactly the frames that can change
+  // the answer, and the traverse above is not repeated per frame.
+  const roofVisibleRef = useRef(true);
+  useFrame(({ camera }) => {
+    // Hysteresis band around the 7.50 m roofline: without it, hovering the orbit camera
+    // right at the threshold flickers the whole roof on and off frame to frame.
+    const y = camera.position.y;
+    const visible = roofVisibleRef.current ? y < ROOF_HEIGHT + 0.5 : y < ROOF_HEIGHT - 0.5;
+    if (visible === roofVisibleRef.current) return;
+    roofVisibleRef.current = visible;
+    for (const obj of roofRef.current) obj.visible = visible;
     invalidate();
-  }, [scene, isWalking, invalidate]);
+  });
 
   // dispose={null}: `scene` comes from drei's URL-keyed GLTF cache, shared across
   // remounts (e.g. an error-retry unmounts and remounts this component with the

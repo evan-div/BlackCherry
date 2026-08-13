@@ -153,13 +153,18 @@ until the file exists.
 - Bake lighting to an **emissive** lightmap over a **black** `baseColorFactor` (see
   the baking section below). That makes the surface render exactly as baked and
   fully independent of the app's runtime lights — no double-lighting, no fighting.
-  The app detects these by the `BAKED_` material-name prefix and skips them when
-  assigning shadow casting, since their shadows are already in the bake.
+  The app detects these **structurally** — a black `baseColorFactor` plus an emissive
+  texture or factor — not by a name prefix, so any unlit material qualifies however
+  it's named. It then skips them when assigning shadow casting (their shadows are
+  already in the bake) and turns tone mapping off for them (see below).
 - Compress with [gltf-transform](https://gltf-transform.dev/) rather than Blender's
   built-in Draco export, so the pipeline is re-runnable:
   ```bash
-  npm run optimize-model   # webp + Draco on public/models/trade-show.glb, in place
+  npm run optimize-model   # Draco on public/models/trade-show.glb, in place
   ```
+  Geometry only — the asset already ships its textures as KTX2, so re-encoding them
+  would just be a lossy round-trip. Add `webp` back if a future export ever hands
+  over plain PNG/JPEG textures.
   **Do not use `gltf-transform optimize`.** Its `flatten`/`join`/`prune` steps
   delete exactly the things the app relies on: `join` merges meshes and destroys
   per-object names, and `flatten`/`prune` drop mesh-less nodes — which silently
@@ -187,10 +192,17 @@ architectural renders read as "real". Baking moves that quality offline:
    floors glow softly under stage lighting. Wire the result as **emissive** with
    `emissiveFactor` 1,1,1 and set the material's **base colour to black** — that
    way the diffuse term contributes nothing, runtime lights can't double-light the
-   surface, and it renders on the web exactly as it did in Cycles. Name these
-   materials `BAKED_*`; the app keys off that prefix to skip them when assigning
-   runtime shadows (their shadows are already baked in). Bake to a second UV set
+   surface, and it renders on the web exactly as it did in Cycles. The app finds
+   these by that structure (black base + emissive), so the naming is free — the
+   current asset uses `BAKED_*` for the shell and `EMISSIVE_*` for the ceiling light
+   panels, and both are picked up the same way. Bake to a second UV set
    (`TEXCOORD_1`) so the lightmap is independent of the tiling UVs.
+
+   **Bake with the view transform applied** (`save_render` the PNG, then reload it)
+   so the map is display-referred. The app sets `toneMapped = false` on these
+   materials to match: running the renderer's ACES pass over an already-graded bake
+   tone-maps it twice, which desaturates and flattens exactly the contrast it was
+   baked to carry. Runtime-lit props are linear and keep ACES.
 4. **Compress textures to KTX2** so the added texture weight stays cheap on the
    GPU (KTX2 stays compressed in VRAM; PNG/JPG decompress to full size):
    ```bash
