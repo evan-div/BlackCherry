@@ -132,6 +132,42 @@ function repairMagnifiedTextureTransforms(mesh: Mesh): void {
   }
 }
 
+/** Emissive intensity a screen displaying artwork is allowed to reach. Not an invented
+ * number: it's what `Material.002` (the centre stage screen) already uses for the exact
+ * same authoring pattern, so this makes the side screens match a panel the export
+ * already considers correct. */
+const SCREEN_EMISSIVE_INTENSITY = 1;
+
+/**
+ * Caps the emissive intensity of screens that are DISPLAYING something.
+ *
+ * A material carrying the same image as both its base colour and its emissive map is a
+ * self-illuminated picture — a screen, not a lamp. Pushing one to a high emissive
+ * strength is self-defeating: past about 1 the picture clips, and the brighter it goes
+ * the less of it survives. The projector screens ship at 14, which turns their navy
+ * artwork (~0.10, 0.12, 0.23) into (1.4, 1.7, 3.2) — every channel over range, blue
+ * furthest, so ACES rolls it off to a flat pale violet and the lime text washes to
+ * near-white. The screens end up too bright to read.
+ *
+ * Scoped by the same-texture-in-both-slots test so it only catches picture screens. The
+ * ceiling LED strips also run a high strength (15) and are deliberately untouched — they
+ * carry no emissive texture, so there is no image for the intensity to destroy, and that
+ * brightness is the whole point of a light source.
+ *
+ * This is a tuning override rather than a repair of invalid data: unlike a colour image
+ * wired as a normal map, 14 is a legal value that is simply too high here. It's a no-op
+ * once the export lowers it.
+ */
+function clampScreenEmissive(mesh: Mesh): void {
+  for (const m of meshMaterials(mesh)) {
+    if (!(m instanceof MeshStandardMaterial)) continue;
+    if (!m.emissiveMap || m.emissiveMap !== m.map) continue;
+    if (m.emissiveIntensity <= SCREEN_EMISSIVE_INTENSITY) continue;
+    // emissiveIntensity is a plain uniform — no needsUpdate/recompile required.
+    m.emissiveIntensity = SCREEN_EMISSIVE_INTENSITY;
+  }
+}
+
 /** Loads the Blender-exported trade show GLB. Collision proxy nodes (named
  * `COLLISION*`) are authored to be invisible in the final render — they're hidden
  * here rather than removed so `collision.ts` can still find and raycast against them.
@@ -151,6 +187,7 @@ export function TradeShowModel({ url, decoderPath, ktx2Path, onLoaded }: TradeSh
       if (obj instanceof Mesh) {
         repairSelfReferencingNormalMaps(obj);
         repairMagnifiedTextureTransforms(obj);
+        clampScreenEmissive(obj);
         optOutBakedFromToneMapping(obj);
         // Unlit surfaces already contain their own shadowing, so they neither cast
         // (doubling up onto the runtime-lit props) nor receive (their black base
