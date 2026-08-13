@@ -88,6 +88,43 @@ function repairSelfReferencingNormalMaps(mesh: Mesh): void {
   }
 }
 
+/** Below this, a texture transform is magnifying a crop rather than tiling: a scale of
+ * 0.1 stretches a tenth of the image across the whole surface (10x magnification). The
+ * two tablecloths sit at 0.028 and 0.035; nothing legitimate in this scene comes near.
+ * A texture atlas is the one thing that uses sub-1 scales on purpose, which is why this
+ * is a deliberately extreme threshold rather than "anything under 1" — an atlas would
+ * need more than 10 cells per axis to trip it. */
+const MIN_SANE_TEXTURE_SCALE = 0.1;
+
+/**
+ * Repairs an inverted `KHR_texture_transform` on colour maps.
+ *
+ * The tablecloth materials ship a transform with scale ~0.03, so instead of TILING the
+ * 2048x2048 linen weave across the cloth they magnify a 71x71 pixel corner of it over
+ * the whole thing — about 24 px/m, where the venue floor gets 90. That turns individual
+ * thread crossings into 4 cm grey blobs, which is the mottled tinfoil look the cloths
+ * have. The value is almost certainly a reciprocal slip (0.0347 = 1/28.8): tiling wants
+ * a scale ABOVE 1, magnifying uses one below.
+ *
+ * Resetting to identity maps the full weave once across the authored UVs (~680 px/m),
+ * so the cloth reads as smooth fabric. Deliberately identity rather than a chosen tiling
+ * factor — the right number depends on how much real fabric the photo covers, which the
+ * asset doesn't record. That's an art call for the export, not something to invent here;
+ * this only removes a value that cannot be right.
+ */
+function repairMagnifiedTextureTransforms(mesh: Mesh): void {
+  for (const m of meshMaterials(mesh)) {
+    if (!(m instanceof MeshStandardMaterial) || !m.map) continue;
+    const { x, y } = m.map.repeat;
+    if (x >= MIN_SANE_TEXTURE_SCALE && y >= MIN_SANE_TEXTURE_SCALE) continue;
+    // GLTFLoader clones a texture before applying the transform, so this is scoped to
+    // the affected material rather than every user of the shared image.
+    m.map.repeat.set(1, 1);
+    m.map.offset.set(0, 0);
+    m.map.needsUpdate = true;
+  }
+}
+
 /** Loads the Blender-exported trade show GLB. Collision proxy nodes (named
  * `COLLISION*`) are authored to be invisible in the final render — they're hidden
  * here rather than removed so `collision.ts` can still find and raycast against them.
@@ -106,6 +143,7 @@ export function TradeShowModel({ url, decoderPath, ktx2Path, onLoaded }: TradeSh
       }
       if (obj instanceof Mesh) {
         repairSelfReferencingNormalMaps(obj);
+        repairMagnifiedTextureTransforms(obj);
         optOutUnlitFromToneMapping(obj);
         // Unlit surfaces already contain their own shadowing, so they neither cast
         // (doubling up onto the runtime-lit props) nor receive (their black base
