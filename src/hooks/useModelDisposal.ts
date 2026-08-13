@@ -38,13 +38,24 @@ export function useModelDisposal(modelUrl: string | undefined): RefObject<unknow
       const scene = sceneRef.current as DisposableObject3D | null;
       if (scene) {
         scene.traverse((obj) => {
-          const o = obj as { geometry?: { dispose: () => void }; material?: unknown };
+          const o = obj as {
+            geometry?: { dispose: () => void };
+            material?: unknown;
+            isInstancedMesh?: boolean;
+            dispose?: () => void;
+          };
           o.geometry?.dispose();
           if (Array.isArray(o.material)) {
             o.material.forEach(disposeMaterial);
           } else if (o.material) {
             disposeMaterial(o.material);
           }
+          // An InstancedMesh owns a GPU buffer beyond its geometry and material —
+          // the per-instance transform matrix (and instance colour, if present).
+          // The export now ships 21 instanced groups covering 240 objects, so
+          // without this their matrix buffers survive teardown. Duck-typed, since
+          // this hook must not import three (see above).
+          if (o.isInstancedMesh) o.dispose?.();
         });
       }
       const url = modelUrlRef.current;

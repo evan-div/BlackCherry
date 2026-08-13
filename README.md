@@ -150,6 +150,14 @@ until the file exists.
   automatically. Without them, walk mode raycasts the full visible geometry.
 - Export: glTF Binary (.glb), +Y up, apply modifiers on, punctual lights + cameras
   off (the app supplies its own lighting and reads the `CAMERA_*` empties instead).
+- Repeated props (tables, chairs, curtains) should ship as `EXT_mesh_gpu_instancing`
+  — the loader turns each group into one `InstancedMesh`, so 240 objects cost 21 draw
+  calls instead of 240. Blender's exporter only groups **children of a common parent**,
+  so parent each shared-mesh group to an Empty or the extension silently never emits.
+  Note the tradeoff: instanced children are collapsed into their holder node, so those
+  objects are no longer individually addressable by name. Keep anything the app looks
+  up by name (`HS_*`, `CAMERA_*`, `COLLISION_*`, ceiling, light fixtures) OUT of the
+  instanced groups.
 - Bake lighting to an **emissive** lightmap over a **black** `baseColorFactor` (see
   the baking section below). That makes the surface render exactly as baked and
   fully independent of the app's runtime lights — no double-lighting, no fighting.
