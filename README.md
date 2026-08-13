@@ -163,8 +163,15 @@ until the file exists.
   fully independent of the app's runtime lights — no double-lighting, no fighting.
   The app detects these **structurally** — a black `baseColorFactor` plus an emissive
   texture or factor — not by a name prefix, so any unlit material qualifies however
-  it's named. It then skips them when assigning shadow casting (their shadows are
-  already in the bake) and turns tone mapping off for them (see below).
+  it's named. All of them skip shadow casting (their shadows are already baked, or
+  they're light sources).
+- Distinguish **baked surfaces from emitters**, because they need opposite tone
+  mapping. A baked lightmap is display-referred — the view transform is already inside
+  the image — so it must skip the renderer's tone mapping or it gets graded twice. A
+  glowing fixture is scene-referred HDR (`KHR_materials_emissive_strength` above 1) and
+  *must* stay tone mapped, or it clips to a flat colour. The app splits them on the
+  presence of an **emissive texture**: baked maps have one, emitters carry a bare
+  factor. Keep that true and both work automatically.
 - Compress with [gltf-transform](https://gltf-transform.dev/) rather than Blender's
   built-in Draco export, so the pipeline is re-runnable:
   ```bash

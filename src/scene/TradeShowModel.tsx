@@ -17,27 +17,43 @@ interface TradeShowModelProps {
 
 /**
  * True for a material authored as UNLIT — the export's convention for anything whose
- * appearance is already finished and must not be re-lit or re-graded at runtime:
- * a BLACK base colour (so lights and shadows contribute nothing) carrying its entire
- * appearance in emissive.
+ * appearance is already finished and must not be re-lit at runtime: a BLACK base colour
+ * (so lights and shadows contribute nothing) carrying its entire appearance in emissive.
  *
- * Deliberately a STRUCTURAL test rather than a name-prefix one. It started as a
- * `BAKED_` prefix check, which silently missed the phase-4 light fixtures
- * (`EMISSIVE_Ceiling_Panel`) — those are unlit the same way but carry a flat
- * emissiveFactor with no emissive texture, so they'd have been tone-mapped and
- * rendered grey. Testing the authoring contract itself covers the shell, the
- * fixtures, and whatever the next export names its unlit surfaces.
+ * Deliberately a STRUCTURAL test rather than a name-prefix one, so it covers the baked
+ * shell, the ceiling emitters, and whatever the next export names them.
  *
- * Note the emissive test accepts a factor OR a texture: fixtures have only a factor,
- * baked shell surfaces have a lightmap. A black base with NEITHER (the curtains) is
- * genuinely just a black object and is correctly excluded — it still wants normal
- * lighting and shadow behaviour.
+ * The emissive test accepts a factor OR a texture, because both kinds belong here for
+ * LIGHTING purposes. They differ for TONE MAPPING — see isBakedSurface. A black base
+ * with NEITHER (the curtains) is genuinely just a black object and is correctly
+ * excluded; it still wants normal lighting and shadow behaviour.
  */
 function isUnlitMaterial(m: Material): boolean {
   if (!(m instanceof MeshStandardMaterial)) return false;
   const baseIsBlack = m.color.r === 0 && m.color.g === 0 && m.color.b === 0;
   if (!baseIsBlack) return false;
   return !!m.emissiveMap || m.emissive.r > 0 || m.emissive.g > 0 || m.emissive.b > 0;
+}
+
+/**
+ * True for the subset of unlit materials that are DISPLAY-REFERRED — a finished picture
+ * rather than a radiance value — and so must skip the renderer's tone mapping.
+ *
+ * The discriminator is the emissive TEXTURE, and the distinction is real rather than
+ * cosmetic. The 30 baked shell maps are photographs of the lit room with Blender's AgX
+ * view transform already applied, at emissiveIntensity 1: they are finished sRGB and
+ * running ACES over them grades twice. The ceiling LED strips carry no texture — just a
+ * colour at emissiveIntensity 15, which is scene-referred HDR that NEEDS tone mapping to
+ * land in display range.
+ *
+ * Getting this backwards is visible: opting the LEDs out clips them to flat yellow
+ * (the export measured #ffffb8 against a #fdfaf8 reference, vs #fffcec when tone mapped).
+ * An earlier export note advised extending the opt-out to everything named `EMISSIVE_*`
+ * and was later retracted on measurement — hence testing what the material IS rather
+ * than what it's called.
+ */
+function isBakedSurface(m: Material): boolean {
+  return isUnlitMaterial(m) && !!(m as MeshStandardMaterial).emissiveMap;
 }
 
 function meshMaterials(mesh: Mesh): Material[] {
@@ -51,20 +67,11 @@ function isUnlitSurface(mesh: Mesh): boolean {
   return meshMaterials(mesh).some(isUnlitMaterial);
 }
 
-/**
- * Unlit surfaces are DISPLAY-REFERRED: Blender's AgX view transform is already applied
- * inside the baked lightmaps (and the fixture emissives are authored to sit against
- * them), so they are finished pictures rather than linear radiance. Running the
- * renderer's ACES pass over them tone-maps a second time, which desaturates and
- * flattens exactly the contrast they were made to carry — the shell reads dull and
- * the light fixtures read grey instead of glowing.
- *
- * Opting them out of tone mapping renders them as authored, while the runtime-lit
- * props — which ARE linear and do want ACES — keep it.
- */
-function optOutUnlitFromToneMapping(mesh: Mesh): void {
+/** Renders the baked shell exactly as authored (see isBakedSurface). Everything else —
+ * the runtime-lit props AND the HDR ceiling emitters — keeps ACES. */
+function optOutBakedFromToneMapping(mesh: Mesh): void {
   for (const m of meshMaterials(mesh)) {
-    if (isUnlitMaterial(m) && m.toneMapped) {
+    if (isBakedSurface(m) && m.toneMapped) {
       m.toneMapped = false;
       m.needsUpdate = true;
     }
@@ -144,13 +151,14 @@ export function TradeShowModel({ url, decoderPath, ktx2Path, onLoaded }: TradeSh
       if (obj instanceof Mesh) {
         repairSelfReferencingNormalMaps(obj);
         repairMagnifiedTextureTransforms(obj);
-        optOutUnlitFromToneMapping(obj);
+        optOutBakedFromToneMapping(obj);
         // Unlit surfaces already contain their own shadowing, so they neither cast
         // (doubling up onto the runtime-lit props) nor receive (their black base
         // colour makes received light a no-op anyway — skipping it is a free
-        // saving). This covers the baked shell and the emissive light fixtures,
-        // which should glow rather than drop shadows. Everything else — tables,
-        // chairs, banners — still uses the runtime rig normally.
+        // saving). Note this uses the WIDER unlit test, not the baked one: the
+        // ceiling LED strips are tone mapped like a normal material but should still
+        // glow rather than drop shadows. Everything else — tables, chairs, banners —
+        // uses the runtime rig normally.
         const unlit = isUnlitSurface(obj);
         obj.castShadow = !unlit;
         obj.receiveShadow = !unlit;
@@ -171,15 +179,18 @@ export function TradeShowModel({ url, decoderPath, ktx2Path, onLoaded }: TradeSh
   // Height covers both cases with one rule: enclosed at room level in either mode,
   // open as soon as you lift the orbit camera over the roofline.
   //
-  // The 31 recessed light panels are toggled with it. They sit flush IN the ceiling but
-  // are separate top-level nodes rather than its children, so hiding only the ceiling
-  // would leave a grid of bright white quads hanging in mid-air between the orbit
-  // camera and the floor — the exact view the ceiling is hidden to reveal.
+  // Everything mounted in the ceiling toggles with it — the coffer ribs and their LED
+  // strips, and the recessed panels an earlier export used. They're separate top-level
+  // nodes rather than children of the ceiling, so hiding only the ceiling itself would
+  // leave ribs and glowing strips hanging in mid-air between the orbit camera and the
+  // floor: the exact view the ceiling is hidden to reveal. The pattern deliberately
+  // covers the retired `FIXTURE_*` naming too, so the toggle survives in both
+  // directions if that geometry ever comes back.
   const roofRef = useRef<Object3D[]>([]);
   useEffect(() => {
     const roof: Object3D[] = [];
     scene.traverse((obj) => {
-      if (/^Ceiling/i.test(obj.name) || obj.name.startsWith('FIXTURE')) roof.push(obj);
+      if (/^(Ceiling|Coffer|FIXTURE)/i.test(obj.name)) roof.push(obj);
     });
     roofRef.current = roof;
   }, [scene]);

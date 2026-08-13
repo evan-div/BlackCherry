@@ -14,16 +14,16 @@ interface LightingProps {
  * is disabled in ExplorerCanvas, so we flag `needsUpdate` here after the light settles.
  *
  * With the current export this rig only lights the NON-baked content — tables, chairs,
- * banners, counters. The architecture (floors/walls/ceiling) and the ceiling light
- * panels ship with Blender-baked lighting as an emissive map or factor over a black
- * base colour, so they render exactly as baked and are deliberately untouched by
- * anything here (see TradeShowModel's isUnlitSurface).
+ * banners, counters. The architecture (floors, walls, ceiling, coffer ribs) ships with
+ * Blender-baked lighting as an emissive map over a black base colour, and the ceiling
+ * LED strips are emitters in their own right, so neither is touched by anything here
+ * (see TradeShowModel's isUnlitSurface).
  *
  * That means these intensities are not a free choice — they have to put the props at
  * the same brightness as the room baked around them, or the furniture reads as cut out
  * and pasted in. They're set from the export's measured floor mean luminance, and the
- * phase-5 ceiling raise moved it 0.579 → 0.712 (a lit ceiling bouncing down), so each
- * term below is scaled by that same ~1.23x. */
+ * coffered ceiling puts it at 0.683 (up from 0.579 before the ceiling work), so each
+ * term below is scaled by that same ~1.18x. */
 export function Lighting({ venueScale = false }: LightingProps) {
   const lightRef = useRef<DirectionalLight>(null);
   const { gl, invalidate } = useThree();
@@ -58,26 +58,35 @@ export function Lighting({ venueScale = false }: LightingProps) {
        * convention-hall environment: a big overhead wash plus cool/warm side fills so
        * materials get directional variation in their reflections instead of a flat
        * single-tone response. */}
-      <Environment resolution={256} environmentIntensity={venueScale ? 0.27 : 0.6}>
+      <Environment resolution={256} environmentIntensity={venueScale ? 0.26 : 0.6}>
         <Lightformer form="rect" intensity={2.2} position={[0, 10, -14]} scale={[16, 8, 1]} color="#ffffff" />
         <Lightformer form="rect" intensity={1.1} position={[-10, 6, 5]} rotation={[0, Math.PI / 3, 0]} scale={[8, 5, 1]} color="#c9d4ff" />
         <Lightformer form="rect" intensity={1.1} position={[10, 6, 5]} rotation={[0, -Math.PI / 3, 0]} scale={[8, 5, 1]} color="#ffe9c4" />
         <Lightformer form="ring" intensity={1.6} position={[0, 12, 0]} scale={14} color="#ffffff" />
         <Lightformer form="rect" intensity={0.7} position={[0, 8, 18]} rotation={[0, Math.PI, 0]} scale={[14, 6, 1]} color="#f2f4f8" />
       </Environment>
-      {/* Hemisphere fill (cool ceiling light down, warm floor bounce up) reads far
+      {/* Hemisphere fill (light down from above, warm floor bounce up) reads far
        * more like a real interior than a flat ambient term, which grays everything.
+       *
+       * The venue's downward term is WARM, unlike the placeholder's cool daylight:
+       * the coffered ceiling's LED strips tint the whole baked shell warm (the export
+       * measures a mean R/B ratio of 1.06–2.38 across its lightmaps). Lighting the
+       * props with cool light inside that room leaves the furniture visibly colder
+       * than the floor it stands on — the same "pasted in" failure as getting the
+       * brightness wrong, just in hue.
        *
        * All three of these stay LOW for the baked venue: they light only the handful
        * of un-baked props, which sit inside an interior that already carries its own
        * lighting. At the intensities the old flat-grey model needed they blew those
        * props out to white and flattened the bake's contrast. */}
-      <hemisphereLight args={['#dfe6f5', '#b8ac9c', venueScale ? 0.22 : 0.35]} />
+      <hemisphereLight
+        args={[venueScale ? '#ffe7c9' : '#dfe6f5', '#b8ac9c', venueScale ? 0.21 : 0.35]}
+      />
       <ambientLight intensity={venueScale ? 0.06 : 0.12} />
       <directionalLight
         ref={lightRef}
         position={venueScale ? [18, 34, 26] : [10, 14, 6]}
-        intensity={venueScale ? 0.62 : 1.4}
+        intensity={venueScale ? 0.59 : 1.4}
         castShadow
       />
     </>
