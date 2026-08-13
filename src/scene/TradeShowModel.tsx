@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useGLTF } from '@react-three/drei';
 import { useFrame, useThree } from '@react-three/fiber';
-import { Material, Mesh, MeshStandardMaterial, type Object3D } from 'three';
+import { LinearSRGBColorSpace, Material, Mesh, MeshStandardMaterial, type Object3D } from 'three';
 import { configureGltfLoader } from '../loaders/gltf';
 
 /** Clear ceiling height of the venue, in metres — measured from the export
@@ -62,9 +62,21 @@ function meshMaterials(mesh: Mesh): Material[] {
   );
 }
 
-/** True when any of a mesh's materials is unlit (see isUnlitMaterial). */
-function isUnlitSurface(mesh: Mesh): boolean {
-  return meshMaterials(mesh).some(isUnlitMaterial);
+/**
+ * True when a mesh's lighting is already resolved offline and it should sit out the
+ * runtime shadow pass entirely — neither casting (which would double up onto the props)
+ * nor receiving (its shadows are in the bake).
+ *
+ * Covers both ways the export bakes: the unlit emissive shell, and the floors, which
+ * carry a real `lightMap` alongside a lit concrete albedo. The floors matter most here.
+ * Being lit materials they'd otherwise default into the shadow pass and self-shadow —
+ * a large flat plane both casting and receiving is the classic shadow-acne case — while
+ * contributing nothing, since the lightmap's irradiance dwarfs the runtime key light.
+ */
+function hasBakedLighting(mesh: Mesh): boolean {
+  return meshMaterials(mesh).some(
+    (m) => isUnlitMaterial(m) || (m instanceof MeshStandardMaterial && m.lightMap !== null),
+  );
 }
 
 /** Renders the baked shell exactly as authored (see isBakedSurface). Everything else —
@@ -132,6 +144,68 @@ function repairMagnifiedTextureTransforms(mesh: Mesh): void {
   }
 }
 
+/**
+ * Multiplier applied to the floor lightmaps once they're moved into the `lightMap` slot.
+ *
+ * The export bakes irradiance divided by 96 to fit 8-bit, and three.js applies the same
+ * Lambert 1/PI that Cycles does, so the theoretical value is simply 96. Measured against
+ * the previous export's floor — same camera, same walls, which did not change — the match
+ * lands at 82. Being within 15% of theory is the point: it says the pipeline is understood.
+ *
+ * The export's own recommendation was 2700, calibrated with the lightmap left on an sRGB
+ * decode (see LIGHTMAP_COLOR_SPACE). That is 33x theory, and the gap was never a constant —
+ * it was the gamma curve, which is why it also mottled the floor rather than just
+ * brightening it. Re-measure if ExplorerCanvas ever changes tone mapping.
+ */
+const FLOOR_LIGHTMAP_INTENSITY = 82;
+
+/**
+ * Lightmaps hold LINEAR irradiance, not colour.
+ *
+ * The export encodes them as sRGB — reasonably, since every other map in the file is
+ * colour, and while the shell's lightmaps were display-referred AgX pictures used as
+ * emissive that was correct. The floor's is different in kind: raw irradiance scaled to
+ * fit 8-bit. Decoding that through the sRGB curve crushes the darks far harder than the
+ * brights, so the floor arrives both too bright and visibly mottled with chroma noise —
+ * gamma error, not compression. Overriding to linear costs nothing (three picks the
+ * non-sRGB internal format for the compressed texture) and puts the numbers back where
+ * the physics expects them.
+ */
+const LIGHTMAP_COLOR_SPACE = LinearSRGBColorSpace;
+
+/**
+ * Moves a lightmap out of the emissive slot and into `lightMap`, where it belongs.
+ *
+ * glTF has no lightmap slot, so the export parks the floor's baked lighting in
+ * `emissiveTexture` purely because that's a channel glTF will carry along with the second
+ * UV set it needs. Left there it would be ADDED to the surface — a glowing floor —
+ * instead of MULTIPLYING the concrete albedo, which is the whole point of splitting them:
+ * the concrete's character is 1-3 mm scratches, and a lightmap with 1-2 cm texels averages
+ * every one of them away. Albedo and lighting have to travel separately for the grain to
+ * survive.
+ *
+ * Detected structurally, by the emissive map sitting on a DIFFERENT UV channel than the
+ * base colour map. A genuine emissive decal shares the base colour's UVs; a lightmap needs
+ * its own non-overlapping unwrap, which is exactly why it's on TEXCOORD_1. That reads the
+ * intent out of the data rather than trusting the `FLOOR_` name to survive the next export.
+ *
+ * These materials stay tone mapped, unlike the unlit shell — they carry scene-referred
+ * radiance rather than a finished AgX picture, which is the default, so nothing to set.
+ */
+function promoteLightmapFromEmissive(mesh: Mesh): void {
+  for (const m of meshMaterials(mesh)) {
+    if (!(m instanceof MeshStandardMaterial)) continue;
+    if (!m.emissiveMap || !m.map || m.emissiveMap.channel === m.map.channel) continue;
+    m.lightMap = m.emissiveMap;
+    m.lightMap.colorSpace = LIGHTMAP_COLOR_SPACE;
+    m.lightMap.needsUpdate = true;
+    m.lightMapIntensity = FLOOR_LIGHTMAP_INTENSITY;
+    m.emissiveMap = null;
+    m.emissive.setRGB(0, 0, 0);
+    m.needsUpdate = true;
+  }
+}
+
 /** Emissive intensity a screen displaying artwork is allowed to reach. Not an invented
  * number: it's what `Material.002` (the centre stage screen) already uses for the exact
  * same authoring pattern, so this makes the side screens match a panel the export
@@ -187,18 +261,17 @@ export function TradeShowModel({ url, decoderPath, ktx2Path, onLoaded }: TradeSh
       if (obj instanceof Mesh) {
         repairSelfReferencingNormalMaps(obj);
         repairMagnifiedTextureTransforms(obj);
+        // Before the shadow decision below, which reads the lightMap this installs.
+        promoteLightmapFromEmissive(obj);
         clampScreenEmissive(obj);
         optOutBakedFromToneMapping(obj);
-        // Unlit surfaces already contain their own shadowing, so they neither cast
-        // (doubling up onto the runtime-lit props) nor receive (their black base
-        // colour makes received light a no-op anyway — skipping it is a free
-        // saving). Note this uses the WIDER unlit test, not the baked one: the
-        // ceiling LED strips are tone mapped like a normal material but should still
-        // glow rather than drop shadows. Everything else — tables, chairs, banners —
-        // uses the runtime rig normally.
-        const unlit = isUnlitSurface(obj);
-        obj.castShadow = !unlit;
-        obj.receiveShadow = !unlit;
+        // Anything whose lighting is already baked sits out the shadow pass. Note this
+        // is the WIDER test, not the tone-mapping one: the ceiling LED strips are tone
+        // mapped like a normal material but should still glow rather than drop shadows.
+        // Everything else — tables, chairs, banners — uses the runtime rig normally.
+        const baked = hasBakedLighting(obj);
+        obj.castShadow = !baked;
+        obj.receiveShadow = !baked;
       }
       obj.matrixAutoUpdate = false;
       obj.updateMatrix();

@@ -165,6 +165,18 @@ until the file exists.
   texture or factor — not by a name prefix, so any unlit material qualifies however
   it's named. All of them skip shadow casting (their shadows are already baked, or
   they're light sources).
+- For surfaces whose **albedo detail is finer than the lightmap can carry** (the floor's
+  concrete grain is 1–3 mm; the lightmap's texels are 1–2 cm), ship albedo and lighting
+  separately instead: colour map on `TEXCOORD_0`, lightmap on `TEXCOORD_1`. glTF has no
+  lightmap slot, so park the lightmap in `emissiveTexture` — the app detects it by the
+  emissive map sitting on a *different UV channel* than the base map and moves it to
+  `lightMap` on load.
+  **Store it gamma-encoded, and encode it UASTC.** The lightmap holds linear irradiance
+  scaled to fit 8-bit, which puts it in the darkest part of the range where both 8-bit
+  quantization and ETC1S's coarse chroma are proportionally worst — and the app then
+  multiplies it back up, amplifying that error into visible colour speckle. Gamma
+  encoding spends the code values where the data actually is, which is what the codec
+  assumes anyway.
 - Distinguish **baked surfaces from emitters**, because they need opposite tone
   mapping. A baked lightmap is display-referred — the view transform is already inside
   the image — so it must skip the renderer's tone mapping or it gets graded twice. A
