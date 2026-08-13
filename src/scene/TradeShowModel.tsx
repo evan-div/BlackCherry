@@ -148,16 +148,26 @@ function repairMagnifiedTextureTransforms(mesh: Mesh): void {
  * Multiplier applied to the floor lightmaps once they're moved into the `lightMap` slot.
  *
  * The export bakes irradiance divided by 96 to fit 8-bit, and three.js applies the same
- * Lambert 1/PI that Cycles does, so the theoretical value is simply 96. Measured against
- * the previous export's floor — same camera, same walls, which did not change — the match
- * lands at 82. Being within 15% of theory is the point: it says the pipeline is understood.
+ * Lambert 1/PI that Cycles does, so the theoretical value is 96 — worth stating because
+ * the export's own recommendation was 2700. That 33x gap was the lightmap's gamma curve
+ * (see LIGHTMAP_COLOR_SPACE), and a curve is not a constant, which is why 2700 mottled
+ * the floor rather than merely brightening it.
  *
- * The export's own recommendation was 2700, calibrated with the lightmap left on an sRGB
- * decode (see LIGHTMAP_COLOR_SPACE). That is 33x theory, and the gap was never a constant —
- * it was the gamma curve, which is why it also mottled the floor rather than just
- * brightening it. Re-measure if ExplorerCanvas ever changes tone mapping.
+ * Shipping BELOW theory on purpose. The floor is the one part of the shell that is now
+ * scene-referred and ACES tone-mapped; the walls remain AgX-baked and opted out. AgX has
+ * a much harder shoulder, so the same scene renders a far flatter top end: measured over
+ * the whole floor, the previous export ran p50 0.64 -> p99 0.67, while this one at
+ * theoretical intensity runs p50 0.67 -> p99 0.85. No single multiplier fixes that — the
+ * curves differ in shape, not scale — so matching the MEAN blows the highlights, which is
+ * what "blown out" actually looks like. 45 matches the previous floor's p90 instead and
+ * accepts a slightly darker mean, since erring bright is the visible failure.
+ *
+ * If the whole venue ever wants one tone curve, switching the renderer to AgX matches the
+ * distribution far better (p90 0.72 vs 0.81 at equal intensity) and this returns to ~82 —
+ * but the export measured ACES as the better match for the ceiling LEDs, so that is a
+ * trade, not a free win. Re-measure this constant either way if tone mapping changes.
  */
-const FLOOR_LIGHTMAP_INTENSITY = 82;
+const FLOOR_LIGHTMAP_INTENSITY = 45;
 
 /**
  * Lightmaps hold LINEAR irradiance, not colour.
