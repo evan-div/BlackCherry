@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useGLTF } from '@react-three/drei';
 import { useFrame, useThree } from '@react-three/fiber';
-import { Material, Mesh, MeshStandardMaterial, NoColorSpace, type Object3D } from 'three';
+import { Mesh, MeshStandardMaterial, NoColorSpace, type Object3D } from 'three';
+import { isBakedSurface, isSelfIlluminated, isUnlitMaterial, meshMaterials } from './bakedMaterials';
 import { configureGltfLoader } from '../loaders/gltf';
 
 /** Clear ceiling height of the venue, in metres — measured from the export
@@ -13,63 +14,6 @@ interface TradeShowModelProps {
   decoderPath?: string;
   ktx2Path?: string;
   onLoaded?: (scene: import('three').Group) => void;
-}
-
-/**
- * True for a material authored as UNLIT — the export's convention for anything whose
- * appearance is already finished and must not be re-lit at runtime: a BLACK base colour
- * (so lights and shadows contribute nothing) carrying its entire appearance in emissive.
- *
- * Deliberately a STRUCTURAL test rather than a name-prefix one, so it covers the baked
- * shell, the ceiling emitters, and whatever the next export names them.
- *
- * The emissive test accepts a factor OR a texture, because both kinds belong here for
- * LIGHTING purposes. They differ for TONE MAPPING — see isBakedSurface. A black base
- * with NEITHER (the curtains) is genuinely just a black object and is correctly
- * excluded; it still wants normal lighting and shadow behaviour.
- */
-function isUnlitMaterial(m: Material): boolean {
-  if (!(m instanceof MeshStandardMaterial)) return false;
-  const baseIsBlack = m.color.r === 0 && m.color.g === 0 && m.color.b === 0;
-  if (!baseIsBlack) return false;
-  return !!m.emissiveMap || m.emissive.r > 0 || m.emissive.g > 0 || m.emissive.b > 0;
-}
-
-/**
- * True for the subset of unlit materials that are DISPLAY-REFERRED — a finished picture
- * rather than a radiance value — and so must skip the renderer's tone mapping.
- *
- * The discriminator is the emissive TEXTURE, and the distinction is real rather than
- * cosmetic. The 30 baked shell maps are photographs of the lit room with Blender's AgX
- * view transform already applied, at emissiveIntensity 1: they are finished sRGB and
- * running ACES over them grades twice. The ceiling LED strips carry no texture — just a
- * colour at emissiveIntensity 15, which is scene-referred HDR that NEEDS tone mapping to
- * land in display range.
- *
- * Getting this backwards is visible: opting the LEDs out clips them to flat yellow
- * (the export measured #ffffb8 against a #fdfaf8 reference, vs #fffcec when tone mapped).
- * An earlier export note advised extending the opt-out to everything named `EMISSIVE_*`
- * and was later retracted on measurement — hence testing what the material IS rather
- * than what it's called.
- */
-function isBakedSurface(m: Material): boolean {
-  return isUnlitMaterial(m) && !!(m as MeshStandardMaterial).emissiveMap;
-}
-
-function meshMaterials(mesh: Mesh): Material[] {
-  return (Array.isArray(mesh.material) ? mesh.material : [mesh.material]).filter(
-    (m): m is Material => m instanceof Material,
-  );
-}
-
-/**
- * True when a mesh's lighting is already resolved offline and it should sit out the
- * runtime shadow pass entirely — neither casting (which would double up onto the props)
- * nor receiving (its shadows are in the bake). Covers the whole shell including both
- * floors, which are on the same unlit contract as the walls.
- */
-function hasBakedLighting(mesh: Mesh): boolean {
-  return meshMaterials(mesh).some(isUnlitMaterial);
 }
 
 /** Renders the baked shell exactly as authored (see isBakedSurface). Everything else —
@@ -221,7 +165,7 @@ export function TradeShowModel({ url, decoderPath, ktx2Path, onLoaded }: TradeSh
         // is the WIDER test, not the tone-mapping one: the ceiling LED strips are tone
         // mapped like a normal material but should still glow rather than drop shadows.
         // Everything else — tables, chairs, banners — uses the runtime rig normally.
-        const baked = hasBakedLighting(obj);
+        const baked = isSelfIlluminated(obj);
         obj.castShadow = !baked;
         obj.receiveShadow = !baked;
       }

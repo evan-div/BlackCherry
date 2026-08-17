@@ -8,6 +8,7 @@ import type { Hotspot } from '../config/types';
 import { Hotspots } from '../hotspots/Hotspots';
 import { Lighting } from './Lighting';
 import { PlaceholderScene } from './PlaceholderScene';
+import { ShellEnvironment } from './ShellEnvironment';
 import { SceneConfigProvider } from './SceneConfig';
 import type { AuthoredCameraPose } from './SceneConfig';
 import { TradeShowModel } from './TradeShowModel';
@@ -60,6 +61,7 @@ export function SceneRoot({
 }: SceneRootProps) {
   const [ready, setReady] = useState(!modelUrl);
   const [authoredCamera, setAuthoredCamera] = useState<AuthoredCameraPose | null>(null);
+  const [loadedModel, setLoadedModel] = useState<Group | null>(null);
 
   useEffect(() => {
     if (!modelUrl) setReady(true);
@@ -68,6 +70,7 @@ export function SceneRoot({
   const handleModelLoaded = useCallback(
     (scene: Group) => {
       setAuthoredCamera(resolveAuthoredCamera(scene));
+      setLoadedModel(scene);
       setReady(true);
       onModelLoaded?.(scene);
     },
@@ -90,6 +93,9 @@ export function SceneRoot({
       <fog attach="fog" args={[backdrop, fogNear, fogFar]} />
       <ControlsRig keysRef={keysRef} />
       <Lighting venueScale={!!modelUrl} />
+      {/* Mounted after the model resolves: the probe photographs the shell, so it has
+        * nothing to capture until the shell exists. */}
+      <ShellEnvironment model={loadedModel} />
       <Suspense fallback={null}>
         {modelUrl ? (
           <TradeShowModel

@@ -180,6 +180,18 @@ until the file exists.
   that parks the data in the darkest part of the range where 8-bit quantization and
   ETC1S's coarse chroma are proportionally worst, and multiplying it back up amplifies
   that error into visible colour speckle.
+- **Everything that emits must be structurally unlit** (black base + emissive), because
+  the app derives its entire image-based lighting by *photographing the shell*: it hides
+  every non-emitting mesh, renders a cubemap from the middle of the room, and uses that
+  as `scene.environment`. That means the props are lit by the same light the bake carries
+  — warm LED tint included — and it re-derives itself on every export, where hand-placed
+  lights silently go stale. The corollary is that anything you want contributing to the
+  room's light has to follow the unlit contract, and anything that shouldn't (a video
+  screen, say) simply must not.
+  Note the capture is **display-referred**: the shell opts out of tone mapping and writes
+  finished sRGB, so the probe's render target is flagged sRGB in order to decode back to
+  linear radiance. Capturing into a linear target reads a 0.5 sRGB pixel as 0.5 radiance
+  rather than 0.214 and over-brightens the room by ~2.3x.
 - Distinguish **baked surfaces from emitters**, because they need opposite tone
   mapping. A baked lightmap is display-referred — the view transform is already inside
   the image — so it must skip the renderer's tone mapping or it gets graded twice. A
