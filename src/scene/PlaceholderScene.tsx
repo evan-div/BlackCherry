@@ -60,7 +60,7 @@ export function PlaceholderScene() {
         </mesh>
         <mesh position={[0, 1.35, 0]} castShadow>
           <icosahedronGeometry args={[0.4, 0]} />
-          <meshStandardMaterial color="#c8102e" roughness={0.25} metalness={0.2} />
+          <meshStandardMaterial color="#aab947" roughness={0.25} metalness={0.2} />
         </mesh>
         <object3D name="HS_product-display" position={[0, 1.8, 0]} />
       </group>
@@ -73,7 +73,7 @@ export function PlaceholderScene() {
         </mesh>
         <mesh position={[0, 5.6, 0]} castShadow>
           <boxGeometry args={[1.6, 0.9, 0.1]} />
-          <meshStandardMaterial color="#c8102e" roughness={0.4} />
+          <meshStandardMaterial color="#aab947" roughness={0.4} />
         </mesh>
         <object3D name="HS_signage-tower" position={[0, 5.6, 0.1]} />
       </group>

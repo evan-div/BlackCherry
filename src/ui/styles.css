@@ -106,7 +106,7 @@
   border-color: rgba(255, 255, 255, 0.28);
 }
 .tse-btn:focus-visible {
-  outline: 2px solid var(--tse-accent, #c8102e);
+  outline: 2px solid var(--tse-accent, #aab947);
   outline-offset: 2px;
 }
 .tse-btn:disabled {
@@ -120,9 +120,9 @@
   justify-content: center;
 }
 .tse-btn--accent {
-  background: var(--tse-accent, #c8102e);
+  background: var(--tse-accent, #aab947);
   border-color: transparent;
-  color: var(--tse-accent-text, #fff);
+  color: var(--tse-accent-text, #12141a);
 }
 .tse-btn--accent:hover:not(:disabled) {
   filter: brightness(1.08);
@@ -152,8 +152,8 @@
   cursor: pointer;
 }
 .tse-mode-toggle button[aria-pressed='true'] {
-  background: var(--tse-accent, #c8102e);
-  color: var(--tse-accent-text, #fff);
+  background: var(--tse-accent, #aab947);
+  color: var(--tse-accent-text, #12141a);
 }
 .tse-mode-toggle button:disabled {
   opacity: 0.35;
@@ -277,7 +277,7 @@
 }
 .tse-progress-fill {
   height: 100%;
-  background: var(--tse-accent, #c8102e);
+  background: var(--tse-accent, #aab947);
   border-radius: 2px;
   transition: width 0.2s ease;
 }
@@ -314,7 +314,7 @@
   width: 84px;
   height: 84px;
   border-radius: 50%;
-  border: 2px solid var(--tse-accent, #c8102e);
+  border: 2px solid var(--tse-accent, #aab947);
   background: rgba(10, 12, 18, 0.3);
   backdrop-filter: blur(2px);
   cursor: pointer;
@@ -494,7 +494,7 @@
   color: rgba(255, 255, 255, 0.45);
 }
 .tse-lead-form__input:focus-visible {
-  outline: 2px solid var(--tse-accent, #c8102e);
+  outline: 2px solid var(--tse-accent, #aab947);
   outline-offset: 1px;
   border-color: transparent;
 }
@@ -567,8 +567,8 @@
   backdrop-filter: blur(6px);
 }
 .tse-walk-prompt {
-  background: var(--tse-accent, #c8102e) !important;
-  color: var(--tse-accent-text, #fff);
+  background: var(--tse-accent, #aab947) !important;
+  color: var(--tse-accent-text, #12141a);
   font-weight: 600;
 }
 
@@ -593,7 +593,7 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--tse-accent, #c8102e);
+  background: var(--tse-accent, #aab947);
   transform: translate(-50%, -50%);
 }
 .tse-minimap__player {
@@ -661,8 +661,8 @@
   letter-spacing: 0.09em;
   padding: 4px 9px;
   border-radius: 999px;
-  background: var(--tse-accent, #c8102e);
-  color: var(--tse-accent-text, #fff);
+  background: var(--tse-accent, #aab947);
+  color: var(--tse-accent-text, #12141a);
 }
 .tse-mobile__note {
   margin: 8px 0 0;
@@ -697,7 +697,7 @@
   cursor: pointer;
 }
 .tse-mobile__item-header:focus-visible {
-  outline: 2px solid var(--tse-accent, #c8102e);
+  outline: 2px solid var(--tse-accent, #aab947);
   outline-offset: -2px;
 }
 .tse-mobile__category {

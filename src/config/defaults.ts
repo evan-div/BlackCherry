@@ -65,8 +65,10 @@ export const TRADE_SHOW_WALK: WalkDefaults = {
 };
 
 export const DEFAULT_THEME: Required<ExplorerTheme> = {
-  accent: '#c8102e',
-  accentText: '#ffffff',
+  accent: '#aab947',
+  // Dark ink rather than white: the accent green is light enough that white text on
+  // it lands around 2.2:1, well under WCAG AA. Against #12141a it's ~8.4:1.
+  accentText: '#12141a',
   surface: '#12141a',
   surfaceText: '#f4f4f6',
   fontFamily:

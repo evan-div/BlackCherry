@@ -53,7 +53,7 @@ stays split into a separate chunk that only loads once the container scrolls nea
 
   const handle = mount(document.getElementById('explorer'), {
     modelUrl: '/models/trade-show.glb',
-    theme: { accent: '#c8102e' },
+    theme: { accent: '#aab947' },
   });
 
   // later, e.g. on SPA route change: handle.unmount();
@@ -65,7 +65,7 @@ configured via query params — use this if the host CMS can't run a script tag:
 
 ```html
 <iframe
-  src="/embed.html?modelUrl=/models/trade-show.glb&accent=c8102e"
+  src="/embed.html?modelUrl=/models/trade-show.glb&accent=aab947"
   style="width: 100%; height: 70vh; border: 0"
 ></iframe>
 ```
