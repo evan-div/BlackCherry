@@ -20,45 +20,29 @@ const PROBE_SIZE = 256;
 /** Eye height to probe at, matching the export's `CAMERA_DEFAULT`. */
 const PROBE_HEIGHT = 1.7;
 
-/** A candidate floor has to be within this fraction of the largest horizontal surface,
- * which excludes the small stray boxes the export parks far below the venue. */
-const FLOOR_AREA_FRACTION = 0.5;
-
 /**
- * Where to stand the probe: the middle of the venue's floor, at eye height.
+ * Where to stand the probe: the export's authored `CAMERA_DEFAULT`.
  *
- * Finding the floor needs slightly more care than "the biggest flat thing". The ceiling
- * has essentially the same footprint as the floor below it and is very slightly larger
- * here, so picking purely by area puts the probe at 9.2 m — above the ceiling, looking at
- * its back face and the void, which drains the light out of the whole room. Among surfaces
- * of comparable size, the floor is the LOW one.
+ * Deliberately a named contract node rather than anything derived from geometry, which is
+ * the opposite of how the rest of this file identifies things — and the exception is
+ * earned. Position barely affects the result: the export measured the floor centre, the
+ * collision-floor centre and `CAMERA_DEFAULT` landing within ~6% of each other in the
+ * table band. So a geometric derivation buys nothing measurable while adding real failure
+ * modes, and it already bit once — "the largest horizontal emissive surface" picks the
+ * CEILING, whose footprint slightly exceeds the floor's, which put the probe at 9.2 m
+ * facing the void and drained the light out of the whole room.
  *
- * The area threshold is what keeps the three 6-poly boxes the export leaves ~50 m below
- * the venue from winning "lowest" outright.
+ * `CAMERA_DEFAULT` is also the most meaningful point available: it is authored at eye
+ * height, verified clear of furniture, and it is exactly where the visitor starts.
  */
 function probeCenter(model: Group): Vector3 {
-  const candidates: Box3[] = [];
-  const measured = new Box3();
-  const size = new Vector3();
-  let largestArea = 0;
-  model.traverse((obj) => {
-    if (!(obj instanceof Mesh) || !isSelfIlluminated(obj)) return;
-    measured.setFromObject(obj);
-    measured.getSize(size);
-    // Floors and ceilings are wide and flat; walls, ribs and props are not.
-    if (size.y > Math.min(size.x, size.z)) return;
-    largestArea = Math.max(largestArea, size.x * size.z);
-    candidates.push(measured.clone());
-  });
+  const authored = model.getObjectByName('CAMERA_DEFAULT');
+  if (authored) return authored.getWorldPosition(new Vector3());
 
-  let floor: Box3 | null = null;
-  for (const box of candidates) {
-    box.getSize(size);
-    if (size.x * size.z < largestArea * FLOOR_AREA_FRACTION) continue;
-    if (!floor || box.min.y < floor.min.y) floor = box;
-  }
-
-  const box = floor ?? new Box3().setFromObject(model);
+  // No authored camera — fall back to the middle of the collision floor at eye height,
+  // and to the model's own bounds only if that is missing too.
+  const floor = model.getObjectByName('COLLISION_Floor');
+  const box = new Box3().setFromObject(floor ?? model);
   const center = box.getCenter(new Vector3());
   center.y = box.min.y + PROBE_HEIGHT;
   return center;
