@@ -188,10 +188,11 @@ until the file exists.
   lights silently go stale. The corollary is that anything you want contributing to the
   room's light has to follow the unlit contract, and anything that shouldn't (a video
   screen, say) simply must not.
-  Note the capture is **display-referred**: the shell opts out of tone mapping and writes
-  finished sRGB, so the probe's render target is flagged sRGB in order to decode back to
-  linear radiance. Capturing into a linear target reads a 0.5 sRGB pixel as 0.5 radiance
-  rather than 0.214 and over-brightens the room by ~2.3x.
+  The probe's cube target must be **half-float and un-flagged**. Rendering to a non-XR
+  render target writes `ColorManagement.workingColorSpace` regardless of the target
+  texture's colour space, so the capture is already scene-linear — flagging it sRGB adds
+  a spurious decode on sampling. Float matters because the ceiling LED strips reach a
+  radiance near 5, and an 8-bit target would clip the brightest emitters in the room.
 - Distinguish **baked surfaces from emitters**, because they need opposite tone
   mapping. A baked lightmap is display-referred — the view transform is already inside
   the image — so it must skip the renderer's tone mapping or it gets graded twice. A

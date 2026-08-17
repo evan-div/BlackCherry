@@ -3,9 +3,9 @@ import { useThree } from '@react-three/fiber';
 import {
   Box3,
   CubeCamera,
+  HalfFloatType,
   Mesh,
   PMREMGenerator,
-  SRGBColorSpace,
   Vector3,
   WebGLCubeRenderTarget,
 } from 'three';
@@ -20,11 +20,45 @@ const PROBE_SIZE = 256;
 /** Eye height to probe at, matching the export's `CAMERA_DEFAULT`. */
 const PROBE_HEIGHT = 1.7;
 
-/** Where to stand the probe: the centre of the authored collision floor, which spans
- * both slabs and is a contract node. Falls back to the model's own bounds. */
+/** A candidate floor has to be within this fraction of the largest horizontal surface,
+ * which excludes the small stray boxes the export parks far below the venue. */
+const FLOOR_AREA_FRACTION = 0.5;
+
+/**
+ * Where to stand the probe: the middle of the venue's floor, at eye height.
+ *
+ * Finding the floor needs slightly more care than "the biggest flat thing". The ceiling
+ * has essentially the same footprint as the floor below it and is very slightly larger
+ * here, so picking purely by area puts the probe at 9.2 m — above the ceiling, looking at
+ * its back face and the void, which drains the light out of the whole room. Among surfaces
+ * of comparable size, the floor is the LOW one.
+ *
+ * The area threshold is what keeps the three 6-poly boxes the export leaves ~50 m below
+ * the venue from winning "lowest" outright.
+ */
 function probeCenter(model: Group): Vector3 {
-  const floor = model.getObjectByName('COLLISION_Floor');
-  const box = new Box3().setFromObject(floor ?? model);
+  const candidates: Box3[] = [];
+  const measured = new Box3();
+  const size = new Vector3();
+  let largestArea = 0;
+  model.traverse((obj) => {
+    if (!(obj instanceof Mesh) || !isSelfIlluminated(obj)) return;
+    measured.setFromObject(obj);
+    measured.getSize(size);
+    // Floors and ceilings are wide and flat; walls, ribs and props are not.
+    if (size.y > Math.min(size.x, size.z)) return;
+    largestArea = Math.max(largestArea, size.x * size.z);
+    candidates.push(measured.clone());
+  });
+
+  let floor: Box3 | null = null;
+  for (const box of candidates) {
+    box.getSize(size);
+    if (size.x * size.z < largestArea * FLOOR_AREA_FRACTION) continue;
+    if (!floor || box.min.y < floor.min.y) floor = box;
+  }
+
+  const box = floor ?? new Box3().setFromObject(model);
   const center = box.getCenter(new Vector3());
   center.y = box.min.y + PROBE_HEIGHT;
   return center;
@@ -67,14 +101,14 @@ function buildShellEnvironment(
     }
   });
 
-  // The captured shell is DISPLAY-REFERRED — its materials opt out of tone mapping and
-  // write finished sRGB values. Flagging the target sRGB is what makes three decode those
-  // back to linear radiance when the IBL is sampled. Capturing into a linear target
-  // instead reads a 0.5 sRGB pixel as 0.5 radiance rather than 0.214, over-brightening
-  // the whole room by roughly 2.3x — enough to render black velour curtains as tan.
-  // 8-bit suits it: the source is clamped to display range, so there is no HDR to keep.
-  const target = new WebGLCubeRenderTarget(PROBE_SIZE);
-  target.texture.colorSpace = SRGBColorSpace;
+  // Half-float, and deliberately NOT flagged with a colour space. Rendering to a non-XR
+  // render target writes ColorManagement.workingColorSpace regardless of what the target
+  // texture is flagged (WebGLPrograms.getParameters), so what lands here is already
+  // scene-linear radiance — flagging it sRGB would not change the write, only add a
+  // spurious decode on sampling. Float matters for a different reason: the LED strips
+  // reach a radiance near 5, and an 8-bit target cannot hold anything above 1, so it
+  // would clip the brightest emitters in the room — exactly the ones supplying its warmth.
+  const target = new WebGLCubeRenderTarget(PROBE_SIZE, { type: HalfFloatType });
   const camera = new CubeCamera(0.1, 200, target);
   camera.position.copy(probeCenter(model));
   try {
