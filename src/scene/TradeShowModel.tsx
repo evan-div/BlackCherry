@@ -16,14 +16,40 @@ interface TradeShowModelProps {
   onLoaded?: (scene: import('three').Group) => void;
 }
 
-/** Renders the baked shell exactly as authored (see isBakedSurface). Everything else —
- * the runtime-lit props AND the HDR ceiling emitters — keeps ACES. */
-function optOutBakedFromToneMapping(mesh: Mesh): void {
+/**
+ * White-balance applied to the baked shell, as a per-channel multiplier.
+ *
+ * The venue bakes warm — not from the ceiling LEDs, which are only 0.82% of the room's
+ * light, but from bounce: the wall albedo runs a mean linear R/B of 1.238 and a closed
+ * room compounds that to roughly 1.90 over three bounces, which is what puts the baked
+ * maps at R/B 1.06-2.38. Correcting it properly means changing the wall albedo and
+ * re-baking; this is the grade the export suggested as the alternative.
+ *
+ * It works on the whole image rather than half of it, which is the reason to put it HERE
+ * rather than on the props. The shell is display-referred and renders this multiplier
+ * directly, and the environment probe photographs the shell — so tinting the shell tints
+ * the light the props receive by exactly the same amount, automatically. Cooling the props
+ * alone would leave furniture that disagrees with the room it stands in.
+ *
+ * Kept luminance-neutral so this shifts hue without darkening the venue: measured over a
+ * fixed explore-mode frame it moves R-B from 38.8 to 27.9 while mean luma holds at
+ * 135.3 -> 134.7. Both the walls and the furniture move together (46.3 -> 31.4 and
+ * 38.1 -> 27.9), which is the probe inheritance working.
+ *
+ * Purely a taste knob, and the only one in this file: [1, 1, 1] renders the bake exactly
+ * as authored, and pushing the red down / blue up cools further.
+ */
+const SHELL_WHITE_BALANCE: [number, number, number] = [0.91, 1.0, 1.135];
+
+/** Renders the baked shell as authored apart from the white balance above. Everything
+ * else — the runtime-lit props AND the HDR ceiling emitters — keeps ACES. */
+function gradeBakedSurface(mesh: Mesh): void {
   for (const m of meshMaterials(mesh)) {
-    if (isBakedSurface(m) && m.toneMapped) {
-      m.toneMapped = false;
-      m.needsUpdate = true;
-    }
+    if (!(m instanceof MeshStandardMaterial) || !isBakedSurface(m)) continue;
+    if (m.toneMapped) m.toneMapped = false;
+    // emissiveFactor is white on every baked material, so this sets rather than scales.
+    m.emissive.setRGB(...SHELL_WHITE_BALANCE);
+    m.needsUpdate = true;
   }
 }
 
@@ -160,7 +186,7 @@ export function TradeShowModel({ url, decoderPath, ktx2Path, onLoaded }: TradeSh
         repairSelfReferencingNormalMaps(obj);
         repairMagnifiedTextureTransforms(obj);
         applyBakedDetailMap(obj, maxAnisotropy);
-        optOutBakedFromToneMapping(obj);
+        gradeBakedSurface(obj);
         // Anything whose lighting is already baked sits out the shadow pass. Note this
         // is the WIDER test, not the tone-mapping one: the ceiling LED strips are tone
         // mapped like a normal material but should still glow rather than drop shadows.
