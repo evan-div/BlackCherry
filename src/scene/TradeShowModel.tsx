@@ -19,13 +19,14 @@ interface TradeShowModelProps {
 /**
  * Residual white-balance on the baked shell, as a per-channel multiplier.
  *
- * The venue's warm cast is dominated by the ceiling LED strips, which the export
- * established with single-variable re-bakes: switching the strips off moves
- * `Ceiling_Main` R/B by -0.217, against -0.072 for neutralising the wall albedo and
- * -0.047 for the green accents. They are only 0.82% of the room's radiant power but sit
- * centimetres from the soffit, so locally they set its colour. That was fixed at source
- * by taking the strips from 2230K to 3500K, which is most of the correction; this is the
- * remainder, for taste.
+ * The venue's warm cast has been corrected at source in stages — the ceiling LED strips
+ * from 2230K to 3500K, then the three warm overhead lamp groups taken halfway to white —
+ * and this is the shrinking remainder, kept for taste. The walls stay warm deliberately:
+ * `beige_wall_001_diff_4k` at linear R/B 1.317 is the venue's actual paint, and
+ * neutralising it was measured at only 5% on the ceiling and makes the walls read grey.
+ *
+ * The correction needed here has halved as those source fixes landed, which is the point
+ * of tracking it: it should end at [1, 1, 1].
  *
  * Applied to the SHELL rather than the props, which is the point. The shell is
  * display-referred and renders this multiplier directly, and the environment probe
@@ -35,13 +36,16 @@ interface TradeShowModelProps {
  *
  * Measured over a fixed explore-mode frame, luminance-neutral by design:
  *
- *   off  [1, 1, 1]            whole-frame R-B 30.7   mean luma 138.7
- *   shipped                   whole-frame R-B 19.7   mean luma 138.1
+ *   off  [1, 1, 1]            whole-frame R-B 25.0   mean luma 140.7
+ *   shipped                   whole-frame R-B 19.6   mean luma 140.0
+ *
+ * The previous export needed [0.91, 1, 1.135] to reach that same 19.7; this one reaches
+ * it at half the correction.
  *
  * Purely a taste knob, and the only one in this file: [1, 1, 1] renders the bake exactly
  * as authored, and pushing red down / blue up cools further.
  */
-const SHELL_WHITE_BALANCE: [number, number, number] = [0.91, 1.0, 1.135];
+const SHELL_WHITE_BALANCE: [number, number, number] = [0.955, 1.0, 1.065];
 
 /** Renders the baked shell as authored apart from the white balance above. Everything
  * else — the runtime-lit props AND the HDR ceiling emitters — keeps ACES. */
