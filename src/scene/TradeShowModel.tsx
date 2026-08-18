@@ -47,7 +47,7 @@ interface TradeShowModelProps {
 const SHELL_WHITE_BALANCE: [number, number, number] = [1.0, 1.0, 1.0];
 
 /** Renders the baked shell as authored apart from the white balance above. Everything
- * else — the runtime-lit props AND the HDR ceiling emitters — keeps ACES. */
+ * else — the runtime-lit props AND the HDR ceiling emitters — keeps tone mapping. */
 function gradeBakedSurface(mesh: Mesh): void {
   for (const m of meshMaterials(mesh)) {
     if (!(m instanceof MeshStandardMaterial) || !isBakedSurface(m)) continue;

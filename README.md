@@ -243,9 +243,16 @@ architectural renders read as "real". Baking moves that quality offline:
 
    **Bake with the view transform applied** (`save_render` the PNG, then reload it)
    so the map is display-referred. The app sets `toneMapped = false` on these
-   materials to match: running the renderer's ACES pass over an already-graded bake
-   tone-maps it twice, which desaturates and flattens exactly the contrast it was
-   baked to carry. Runtime-lit props are linear and keep ACES.
+   materials to match: running the renderer's tone mapping over an already-graded
+   bake tone-maps it twice, which desaturates and flattens exactly the contrast it
+   was baked to carry. Runtime-lit props are linear and keep it. The renderer's
+   curve is therefore set to **AgX**, the transform the bake was authored through,
+   so the props are shaped the same way as the room they stand in.
+
+   A corollary worth knowing before chasing a colour cast in the app: because the
+   shell skips tone mapping entirely, its pixels are bit-identical under every
+   renderer curve. If the venue reads too warm or too cool, the bake is where that
+   lives — no renderer-side setting can move it.
 4. **Compress textures to KTX2** so the added texture weight stays cheap on the
    GPU (KTX2 stays compressed in VRAM; PNG/JPG decompress to full size):
    ```bash
