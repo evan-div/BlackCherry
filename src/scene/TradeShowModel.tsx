@@ -17,27 +17,29 @@ interface TradeShowModelProps {
 }
 
 /**
- * White-balance applied to the baked shell, as a per-channel multiplier.
+ * Residual white-balance on the baked shell, as a per-channel multiplier.
  *
- * The venue bakes warm — not from the ceiling LEDs, which are only 0.82% of the room's
- * light, but from bounce: the wall albedo runs a mean linear R/B of 1.238 and a closed
- * room compounds that to roughly 1.90 over three bounces, which is what puts the baked
- * maps at R/B 1.06-2.38. Correcting it properly means changing the wall albedo and
- * re-baking; this is the grade the export suggested as the alternative.
+ * The venue's warm cast is dominated by the ceiling LED strips, which the export
+ * established with single-variable re-bakes: switching the strips off moves
+ * `Ceiling_Main` R/B by -0.217, against -0.072 for neutralising the wall albedo and
+ * -0.047 for the green accents. They are only 0.82% of the room's radiant power but sit
+ * centimetres from the soffit, so locally they set its colour. That was fixed at source
+ * by taking the strips from 2230K to 3500K, which is most of the correction; this is the
+ * remainder, for taste.
  *
- * It works on the whole image rather than half of it, which is the reason to put it HERE
- * rather than on the props. The shell is display-referred and renders this multiplier
- * directly, and the environment probe photographs the shell — so tinting the shell tints
- * the light the props receive by exactly the same amount, automatically. Cooling the props
- * alone would leave furniture that disagrees with the room it stands in.
+ * Applied to the SHELL rather than the props, which is the point. The shell is
+ * display-referred and renders this multiplier directly, and the environment probe
+ * photographs the shell — so tinting the shell tints the light the props receive by the
+ * same amount, automatically. Grading the props alone would leave furniture that
+ * disagrees with the room it stands in.
  *
- * Kept luminance-neutral so this shifts hue without darkening the venue: measured over a
- * fixed explore-mode frame it moves R-B from 38.8 to 27.9 while mean luma holds at
- * 135.3 -> 134.7. Both the walls and the furniture move together (46.3 -> 31.4 and
- * 38.1 -> 27.9), which is the probe inheritance working.
+ * Measured over a fixed explore-mode frame, luminance-neutral by design:
+ *
+ *   off  [1, 1, 1]            whole-frame R-B 30.7   mean luma 138.7
+ *   shipped                   whole-frame R-B 19.7   mean luma 138.1
  *
  * Purely a taste knob, and the only one in this file: [1, 1, 1] renders the bake exactly
- * as authored, and pushing the red down / blue up cools further.
+ * as authored, and pushing red down / blue up cools further.
  */
 const SHELL_WHITE_BALANCE: [number, number, number] = [0.91, 1.0, 1.135];
 

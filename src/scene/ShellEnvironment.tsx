@@ -77,12 +77,25 @@ function buildShellEnvironment(
   scene: import('three').Scene,
   model: Group,
 ): Texture {
-  const hidden: Mesh[] = [];
+  // Force the scene into a known state for the capture, in BOTH directions.
+  //
+  // Hiding the props is the obvious half: they contribute nothing but their own darkness
+  // to the light that is about to illuminate them.
+  //
+  // Revealing the shell is the half that is easy to miss and caused a real intermittency.
+  // The ceiling, coffer ribs and LED strips are hidden whenever the camera is above the
+  // roofline, and the camera only drops to the authored eye-height pose once the model
+  // resolves — so for a few frames it sits at the fallback y=14, with the roof switched
+  // off. A probe firing in that window photographs a room with no ceiling and no emitters,
+  // which came out dimmer AND cooler and varied run to run. Capture state must not depend
+  // on where the camera happens to be.
+  const changed: Mesh[] = [];
   model.traverse((obj) => {
-    if (obj instanceof Mesh && obj.visible && !isSelfIlluminated(obj)) {
-      obj.visible = false;
-      hidden.push(obj);
-    }
+    if (!(obj instanceof Mesh)) return;
+    const shouldBeVisible = isSelfIlluminated(obj);
+    if (obj.visible === shouldBeVisible) return;
+    obj.visible = shouldBeVisible;
+    changed.push(obj);
   });
 
   // Half-float, and deliberately NOT flagged with a colour space. Rendering to a non-XR
@@ -100,7 +113,7 @@ function buildShellEnvironment(
   } finally {
     // Restore before anything can throw its way past the capture — leaving the venue's
     // furniture hidden would be a far worse failure than having no environment.
-    for (const obj of hidden) obj.visible = true;
+    for (const obj of changed) obj.visible = !obj.visible;
   }
 
   const pmrem = new PMREMGenerator(gl);
