@@ -25,8 +25,10 @@ interface TradeShowModelProps {
  * `beige_wall_001_diff_4k` at linear R/B 1.317 is the venue's actual paint, and
  * neutralising it was measured at only 5% on the ceiling and makes the walls read grey.
  *
- * The correction needed here has halved as those source fixes landed, which is the point
- * of tracking it: it should end at [1, 1, 1].
+ * It is now [1, 1, 1] — neutral. The source fixes closed the gap, so the venue renders
+ * exactly as baked and the app carries no colour compensation at all. Kept as a
+ * documented knob rather than deleted, because it is the lever to reach for if a future
+ * re-bake drifts warm again; reaching for it should be a deliberate, temporary act.
  *
  * Applied to the SHELL rather than the props, which is the point. The shell is
  * display-referred and renders this multiplier directly, and the environment probe
@@ -34,18 +36,15 @@ interface TradeShowModelProps {
  * same amount, automatically. Grading the props alone would leave furniture that
  * disagrees with the room it stands in.
  *
- * Measured over a fixed explore-mode frame, luminance-neutral by design:
- *
- *   off  [1, 1, 1]            whole-frame R-B 25.0   mean luma 140.7
- *   shipped                   whole-frame R-B 19.6   mean luma 140.0
- *
- * The previous export needed [0.91, 1, 1.135] to reach that same 19.7; this one reaches
- * it at half the correction.
+ * For reference if it is ever needed again, measured over a fixed explore-mode frame and
+ * luminance-neutral by design: [0.955, 1, 1.065] takes the whole-frame R-B from 25.0 to
+ * 19.6 with mean luma holding at ~140. The correction fell from [0.91, 1, 1.135] to half
+ * that to nothing as the emitter colours were fixed at source.
  *
  * Purely a taste knob, and the only one in this file: [1, 1, 1] renders the bake exactly
  * as authored, and pushing red down / blue up cools further.
  */
-const SHELL_WHITE_BALANCE: [number, number, number] = [0.955, 1.0, 1.065];
+const SHELL_WHITE_BALANCE: [number, number, number] = [1.0, 1.0, 1.0];
 
 /** Renders the baked shell as authored apart from the white balance above. Everything
  * else — the runtime-lit props AND the HDR ceiling emitters — keeps ACES. */
