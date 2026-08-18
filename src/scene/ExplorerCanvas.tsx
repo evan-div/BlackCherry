@@ -1,5 +1,5 @@
 import { Canvas } from '@react-three/fiber';
-import { AgXToneMapping, SRGBColorSpace } from 'three';
+import { ACESFilmicToneMapping, SRGBColorSpace } from 'three';
 import type { ReactNode } from 'react';
 import { DPR_RANGE, DPR_TOUCH_CAP } from '../config/defaults';
 import { useIsTouchOnly } from '../hooks/useIsTouchOnly';
@@ -38,20 +38,24 @@ export function ExplorerCanvas({
       }}
       onCreated={({ gl }) => {
         gl.outputColorSpace = SRGBColorSpace;
-        // AgX, not ACES, because AgX is the view transform the venue was authored
-        // through: the shell's 30 baked maps are photographs of the room already
-        // taken through Blender's AgX, and they render with toneMapped = false so
-        // they arrive on screen untouched. Everything the bake does NOT cover —
-        // cloths, curtains, counters, and the LED emitters — is still lit at
-        // runtime and does go through this curve, so picking ACES here meant the
-        // props were shaped by a different transform than the room they stand in.
-        // ACES rolls warm saturated content toward orange where AgX desaturates it
-        // toward white, and the props are lit by an IBL probed from a warm shell,
-        // so that divergence showed up exactly where it hurts: measured on the
-        // foreground tablecloths, ACES rendered them at R-B 34.1 against AgX's
-        // 28.1. The baked surfaces are bit-identical either way — they never reach
-        // the tone mapper — which is also why no choice here can fix a warm bake.
-        gl.toneMapping = AgXToneMapping;
+        // ACES rather than three's AgX, even though the bake is authored through
+        // Blender's AgX. The shell never reaches this curve at all — the 30 baked
+        // maps render with toneMapped = false, and measure bit-identical under
+        // every option — so the only things it shapes are the runtime-lit props
+        // and the HDR ceiling emitters. On the emitters ACES is the measured
+        // winner: three's AgX is not Blender's and desaturates a bright saturated
+        // emitter less, which the export measured as an LED core of #fffcec under
+        // ACES against #fff4e0 under AgX, reference #fdfaf8.
+        //
+        // This was briefly switched to AgX while the venue was reading yellow,
+        // on the theory that props and room should share one curve; on that asset
+        // it cooled the foreground tablecloths from R-B 34.1 to 28.1. The bake now
+        // carries a solved white balance, so a neutral-albedo cloth renders at
+        // linear R/B 1.03 and the two curves measure identically on it (R-B 2.5
+        // either way) — the warmth the switch was buying back is gone at source,
+        // and ACES keeps slightly more highlight snap. Worth re-measuring only if
+        // the LED colour or strength moves back toward saturation.
+        gl.toneMapping = ACESFilmicToneMapping;
         gl.toneMappingExposure = 1.05;
         gl.shadowMap.autoUpdate = false;
 

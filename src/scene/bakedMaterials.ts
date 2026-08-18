@@ -33,8 +33,8 @@ export function isUnlitMaterial(m: Material): boolean {
  * The discriminator is the emissive TEXTURE, and the distinction is real rather than
  * cosmetic. The 30 baked shell maps are photographs of the lit room with Blender's AgX
  * view transform already applied, at emissiveIntensity 1: they are finished sRGB and
- * running the renderer's curve over them grades twice (see ExplorerCanvas, which sets
- * that curve to AgX to match). The ceiling LED strips carry no texture — just a
+ * running the renderer's curve over them grades twice. The ceiling LED strips carry no
+ * texture — just a
  * colour at emissiveIntensity 15, which is scene-referred HDR that NEEDS tone mapping to
  * land in display range.
  *

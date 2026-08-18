@@ -246,8 +246,9 @@ architectural renders read as "real". Baking moves that quality offline:
    materials to match: running the renderer's tone mapping over an already-graded
    bake tone-maps it twice, which desaturates and flattens exactly the contrast it
    was baked to carry. Runtime-lit props are linear and keep it. The renderer's
-   curve is therefore set to **AgX**, the transform the bake was authored through,
-   so the props are shaped the same way as the room they stand in.
+   curve stays **ACES** rather than three's AgX: it only ever shapes the props and
+   the HDR emitters, and on the emitters ACES measures closer to the Blender
+   reference (see ExplorerCanvas for the numbers and when to revisit).
 
    A corollary worth knowing before chasing a colour cast in the app: because the
    shell skips tone mapping entirely, its pixels are bit-identical under every
