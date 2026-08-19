@@ -216,6 +216,11 @@ until the file exists.
   more. Re-check names in a viewer after any pipeline change.
 - Sanity-check the result at https://gltf-viewer.donmccurdy.com/ before handing off:
   orientation, materials, and that the Empties survived the export.
+- **Size is measured on what ships, in decimal MB.** The Draco pass is where the real
+  reduction happens, so the number that matters is `public/models/trade-show.glb`
+  after `optimize-model`, not the export as delivered. Phase 11 hands over 15.42 MB
+  and ships at **10.6 MB**. Keep the shipped file under ~12 MB; an export can run
+  well past that and still land comfortably.
 
 ## Making it look premium: baking lighting in Blender
 
