@@ -216,6 +216,15 @@ until the file exists.
   more. Re-check names in a viewer after any pipeline change.
 - Sanity-check the result at https://gltf-viewer.donmccurdy.com/ before handing off:
   orientation, materials, and that the Empties survived the export.
+- **Diff the authored material factors against the GLB after every export.** Blender's
+  glTF exporter drops factors silently, and this asset has been bitten four times: a
+  legacy `MixRGB` tint into Base Color exports as `[1,1,1]`, Sheen *Weight* is discarded
+  in favour of Sheen *Tint*, and `KHR_materials_ior` is written **only when
+  `KHR_materials_specular` is also written** — so an IOR authored at the sane default
+  Specular IOR Level of 0.5 never reaches the file and the material renders at glTF's
+  default 1.5. None of these fail an export; they just quietly ship a different material
+  than the one on screen in Blender. Six materials in this build authored an IOR the GLB
+  never carried, including both tablecloths, which had already been hit by the sheen drop.
 - **Size is measured on what ships, in decimal MB.** The Draco pass is where the real
   reduction happens, so the number that matters is `public/models/trade-show.glb`
   after `optimize-model`, not the export as delivered. Phase 11 hands over 15.42 MB
